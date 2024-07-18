@@ -1,11 +1,16 @@
-import logging 
+#!/usr/bin/env python3
+# coding=utf-8
+
+import argparse
 from ftplib import FTP
+import logging 
 import os
 from pathlib import Path
 
 import pandas as pd
 import requests
 from tqdm import tqdm
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,25 +21,19 @@ logging.basicConfig(
     ]
 )
 
-work_dir = Path('/homes/sofia/nextflow/data')
-catalogues_metadata_file = work_dir / 'all_catalog_metadata.tsv'
-gut_mapping_file = work_dir / 'known_and_found_gut_genomes.tsv'
-mag_layer_file = work_dir / "mag_layer.tsv"
-bin_layer_file = work_dir / "bin_layer.tsv"
-output_file = work_dir / "input_accessions.tsv"
 
-previous = None
+mag_layer_file = Path("mag_layer.tsv")
+bin_layer_file = Path("bin_layer.tsv")
 
 
-def main():
+def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_file):
     logging.info("Starting preparation of the list of input accessions for genome-primary assembly linking script...")
-    logging.info("Step 1/4:")
+    logging.info("Step 1/5:")
     logging.info("Download all genomes from MGnify catalogues...")
-    # TODO what if nothing was downloaded??
-    download_all_catalogues_metadata(work_dir, catalogues_metadata_file, previous)
+    download_all_catalogues_metadata(Path("."), catalogues_metadata_file)
     remove_gut_genomes(gut_mapping_file, catalogues_metadata_file)
 
-    logging.info("Step 2/4:")
+    logging.info("Step 2/5:")
     logging.info("Download all genomes from MAG layer of ENA...")
     mag_layer_data = {
         "result": "wgs_set",
@@ -54,7 +53,7 @@ def main():
     }
     download_layer(mag_layer_data, mag_layer_file)
 
-    logging.info("Step 3/4:")
+    logging.info("Step 3/5:")
     logging.info("Download all genomes from bin layer of ENA...")
     bin_layer_data = {
         "result": "analysis",
@@ -76,25 +75,26 @@ def main():
     }
     download_layer(bin_layer_data, bin_layer_file)
 
-    logging.info("Step 4/4:")
-    logging.info("Merge all downloaded accessions removing redunduncy...")
-    # TODO what if nothing was downloaded??   
-    catalogues_df = pd.read_csv(catalogues_metadata_file, usecols=[2], sep='\t')
-    mag_layer_df = pd.read_csv(mag_layer_file, usecols=[0,2], sep='\t')
-    bin_layer_df = pd.read_csv(bin_layer_file, usecols=[0], sep='\t')
-
+    logging.info("Step 4/5:")
+    logging.info("Merge all downloaded accessions removing redunduncy...")  
+    catalogues_df = pd.read_csv(catalogues_metadata_file, usecols=[2], names=['Genome_accession'],  sep='\t')
+    mag_layer_df = pd.read_csv(mag_layer_file, usecols=[0,2], names=['Genome_accession', 'Genome_NCBI_accession'], sep='\t')
+    bin_layer_df = pd.read_csv(bin_layer_file, usecols=[0], names=['Genome_accession'], sep='\t')
     ncbi_accessions = catalogues_df[catalogues_df['Genome_accession'].str.startswith('GCA')]['Genome_accession']
-    mag_layer_df = mag_layer_df[~mag_layer_df['assembly_accession'].isin(ncbi_accessions)]
-
-    combined_df = pd.concat([catalogues_df, mag_layer_df[['wgs_set']], bin_layer_df], ignore_index=True)
+    mag_layer_df = mag_layer_df[~mag_layer_df['Genome_NCBI_accession'].isin(ncbi_accessions)]
+    combined_df = pd.concat([catalogues_df, mag_layer_df[['Genome_accession']], bin_layer_df], ignore_index=True)
     combined_df = combined_df.drop_duplicates()
-    combined_df.to_csv(output_file, sep='\t', index=False)
+
+    logging.info("Step 5/5:")
+    logging.info("Remove from the output all accessions that found in the input list of previously processed genomes...")
+    if processed_acc_file:
+        processed_df = pd.read_csv(processed_acc_file, header=None, names=["Genome_accession"], sep='\t')
+        combined_df = combined_df[~combined_df['Genome_accession'].isin(processed_df['Genome_accession'])]
+    else: 
+        logging.info("There is no list provided, skipping.")
+    combined_df.to_csv(output_file, sep='\t', header=False, index=False)
 
     logging.info(f"Finished successfully! List of genome accessions is saved to {output_file}")
-
-
-def merge_without_redundancy():
-    pass
 
 
 def download_all_catalogues_metadata(work_dir, output_file, previous=None):
@@ -171,20 +171,6 @@ def remove_gut_genomes(gut_mapping_file, catalogues_metadata_file):
     logging.info(f"Preprocessing completed successfully. Output saved to {catalogues_metadata_file}.")
 
 
-# def download_layer(data, output_file):
-#     url = "https://www.ebi.ac.uk/ena/portal/api/search"
-#     try:
-#         with requests.post(url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}, stream=True) as response:
-#             response.raise_for_status()  # Raise an error for bad status codes
-#             with open(output_file, 'w') as file:
-#                 for chunk in response.iter_content(chunk_size=1024):
-#                     if chunk:
-#                         file.write(chunk.decode('utf-8'))
-#         logging.info(f"Data downloaded to {output_file}")
-#     except requests.RequestException as e:
-#         logging.error(f"Failed to download data: {e}")
-    
-
 def download_layer(data, output_file):
     url = "https://www.ebi.ac.uk/ena/portal/api/search"
     try:
@@ -198,4 +184,27 @@ def download_layer(data, output_file):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Download lists of accessions from MGnify catalogues and ENA, merge them, remove redundancy and accessions that were processed in the past")
+    parser.add_argument('--processed-acc', 
+                        '-i',
+                        default=None,
+                        type=Path,
+                        help='File with a list of accessions that were previously processed by the pipeline to skip them in the current run')
+    parser.add_argument('--gut-mapping', 
+                        '-g',
+                        required=True,
+                        type=Path,
+                        help='File with a mapping of GUT_GENOME* accessions from human gut catalog too their source ENA accessions')
+    parser.add_argument('--catalogue-metadata', 
+                        '-m',
+                        required=True,
+                        type=Path,
+                        help='File to write metadata of used accessions from MGnify catalogues')
+    parser.add_argument('--output-accessions', 
+                        '-o',
+                        required=True,
+                        type=Path,
+                        help='File to write prepared list of non-redundant genome accessions')
+
+    args = parser.parse_args()
+    main(args.processed_acc, args.output_accessions, args.catalogue_metadata, args.gut_mapping)
