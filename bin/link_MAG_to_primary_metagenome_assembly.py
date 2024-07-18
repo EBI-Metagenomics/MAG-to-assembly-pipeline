@@ -15,7 +15,7 @@ from retry import retry
 from mag_assembly_checksum_compare import download_fasta_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
 
 # TODO use logging module for errors and messages
-# TODO maybe cash 'primary' or 'non-primary' type and run accessions for assemblies to avoid unnecessary API requests?
+# TODO maybe cache 'primary' or 'non-primary' type and run accessions for assemblies to avoid unnecessary API requests?
 
 def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_folder, cleanup, minchecksum_match):
 
