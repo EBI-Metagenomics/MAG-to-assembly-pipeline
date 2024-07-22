@@ -8,7 +8,7 @@ params.catalogue_metadata = 'all_catalog_metadata.tsv'
 // params.input_accessions = ""
 
 
-// RETROFIT input args
+// FIND_PRIMARY_ASSEMBLY input args
 params.portion_size = 10 
 
 // POSTPROCESSING input args
