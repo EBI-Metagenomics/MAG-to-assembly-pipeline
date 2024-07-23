@@ -1,4 +1,7 @@
 process POSTPROCESSING {
+    label "python_based"
+    conda "${moduleDir}/environment.yml"
+    
     input:
     path input
     path catalogue_metadata

@@ -1,0 +1,12 @@
+name: linking_nf
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - requests
+  - xmltodict
+  - tqdm
+  - retry
+  - biopython
+  - pandas
