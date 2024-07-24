@@ -5,6 +5,9 @@ import argparse
 from pathlib import Path
 import pandas as pd
 
+# TODO add processing of failed and putative files
+# TODO add merge with previous retrofit 
+
 def main(results, catalogue_metadata, previous_table):
     df_list = []
     for file in results:
@@ -21,14 +24,17 @@ def main(results, catalogue_metadata, previous_table):
     merged_df = pd.merge(expanded_df, metadata_df[['Genome', 'Species_rep', "Genome_accession"]],
                      left_on='MAG_accession', right_on='Genome_accession', how='left')
     merged_df.drop(columns=['Genome_accession'], inplace=True)
-
     merged_df.fillna('NA', inplace=True)
-
+    
     merged_df['Action'] = 'add'
 
-    final_df = merged_df[['Primary_assembly', 'MAG_accession', 'Genome', 'Species_rep', 'Action']]
+    new_df = merged_df[['Primary_assembly', 'MAG_accession', 'Genome', 'Species_rep', 'Action']]
 
-    final_df.to_csv('RETROFIT.tsv', sep='\t', index=False)
+    previous_df = pd.read_csv(previous_table, sep='\t')
+    unique_previous_df = previous_df[~previous_df['MAG_accession'].isin(new_df['MAG_accession'])]
+
+    result_df = pd.concat([unique_previous_df, new_df]).reset_index(drop=True)
+    result_df.to_csv('RETROFIT.tsv', sep='\t', index=False)
 
 
 if __name__ == "__main__":
