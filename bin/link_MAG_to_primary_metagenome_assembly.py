@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import logging
 import re
 import shutil
 import urllib.parse
@@ -16,6 +17,17 @@ from mag_assembly_checksum_compare import download_fasta_from_ena,download_fasta
 
 # TODO use logging module for errors and messages
 # TODO maybe cache 'primary' or 'non-primary' type and run accessions for assemblies to avoid unnecessary API requests?
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        # logging.FileHandler(filename='script.log'),
+        logging.StreamHandler()
+    ]
+)
+
 
 def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_folder, cleanup, minchecksum_match):
 
@@ -41,7 +53,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                         mag_ena_data = load_data(acc, type="summary")
                     bin_sample = mag_ena_data["summaries"][0]["sample"]
             except:
-                out_fails.write("{}\tunable to find sample accession\n".format(acc))
+                print(acc, "unable to find sample accession", sep="\t", file=out_fails)
                 continue
 
             # in this code block: for the determined sample id request upper level 'derived from' sample id(s) as well as run id(s) of the MAG
@@ -49,8 +61,8 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                 sample_ena_data = load_data(bin_sample, type="xml")
                 sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"]["SAMPLE_ATTRIBUTE"]
             except:
-                print("Unable to find related samples for {}".format(acc))
-                out_fails.write("{}\tunable to load xml for {}\n".format(acc, bin_sample))
+                logging.info(f"Unable to find related samples for {acc}")
+                print(acc, f"unable to load xml for {bin_sample}", sep="\t", file=out_fails)
                 continue
             # attempting to retrieve either run id(s) or related sample id(s) from 'derived from' field
             derived_from_samples, derived_from_runs = extract_derived_from_info(sample_attributes)
@@ -58,7 +70,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             # this condition is required to find MAG samples that does not contain any needed information
             # or contain it in unexpected fields
             if not derived_from_samples and not derived_from_runs:
-                out_fails.write("{}\t'derived from' field does not exist in XML or does not contain neither run nor sample accessions, MAG sample {}\n".format(acc, bin_sample))
+                print(acc, f"'derived from' field does not exist in XML or does not contain neither run nor sample accessions, MAG sample {bin_sample}", sep="\t", file=out_fails)
                 continue   
             # if 'derived from' field does not contain any run id(s), look for them in the "description" field
             if not derived_from_runs:
@@ -68,7 +80,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     assert derived_from_runs
                 except:
                     pass
-                    # print("Warning! Unable to identify runs which sample is derived from for MAG {}, {}".format(acc, bin_sample))
+                    # logging.info(f"Warning! Unable to identify runs which sample is derived from for MAG {acc}, {bin_sample}")
             # if "derived from" field does not contain any related sample id(s), look for them in the run(s) info using ENA API
             if not derived_from_samples:
                 original_derived_from = derived_from_runs
@@ -76,12 +88,12 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     derived_from_samples = get_samples_from_runs(derived_from_runs)
                     assert derived_from_samples
                 except:
-                    out_fails.write("{}\tunable to find 'derived from' sample from run accession for {}\n".format(acc, bin_sample))
+                    print(acc, f"unable to find 'derived from' sample from run accession for {bin_sample}", sep="\t", file=out_fails)
                     continue
             # in this code block: find all primary assemblies as well as their run ids linked to each of the related sample id(s)
             primary_assemblies, assembly2run = get_primary_metagenome_assembly_info(derived_from_samples)
             if not primary_assemblies:    # cases when primary assembly were not uploaded to ENA
-                out_fails.write("{}\tthere are no assemblies for sample id: {}, derived samples: {}\n".format(acc, bin_sample, ",".join(derived_from_samples)))
+                print(acc, f"there are no assemblies for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", sep="\t", file=out_fails)
                 continue
 
             # in this code block: in cases when more than 1 assembly were found, try to descrease the number of assemblies
@@ -90,8 +102,8 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                 try:
                     primary_assemblies = decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run)
                 except Exception as error:  # TODO improve this error handling
-                    print("Warning! Unable to decrease number of assembly accs for mag {}, sample id: {}, derived samples: {}\n".format(acc, bin_sample, ",".join(derived_from_samples)))
-                    print(str(error))
+                    logging.info(f"Warning! Unable to decrease number of assembly accs for mag {acc}, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}")
+                    logging.info(str(error))
 
             # in this code block: verify retrieved assemblies using checksum comparason
             try:
@@ -112,12 +124,20 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                         mag_url = get_fasta_url(acc, analysis_ftp_field="submitted_ftp")
                         mag_file = download_fasta_from_ena(mag_url, download_folder, acc, unzip=True)
             except HTTPError as e:
-                print("HTTP Error while downloading MAG {}: {} - {}".format(acc, e.code, e.reason))
-                out_fails.write("{}\tFailed to download MAG fasta file, sample id: {}, derived samples: {}\n".format(acc, bin_sample, ",".join(derived_from_samples)))
+                logging.info(f"HTTP Error while downloading MAG {acc}: {e.code} - {e.reason}")
+                print(
+                    acc, 
+                    f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", 
+                    sep="\t", file=out_fails
+                )
                 continue
             except Exception as e:
-                print("An error occurred during downloading of MAG {}:".format(acc), e)
-                out_fails.write("{}\tFailed to download MAG fasta file, sample id: {}, derived samples: {}\n".format(acc, bin_sample, ",".join(derived_from_samples)))
+                logging.info(f"An error occurred during downloading of MAG {acc}:", e)
+                print(
+                    acc, 
+                    f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
+                    sep="\t", file=out_fails
+                )
                 continue
 
             confirmed_assemblies = []
@@ -138,12 +158,27 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             # Write a line to the output TSV file
             # Columns are      Genome_acc    Sample      Derived_from_sample     Derived_from_assembly
             if confirmed_assemblies:
-                out_confirmed.write("{}\t{}\t{}\t{}\n".format(acc, bin_sample, ",".join(original_derived_from),
-                                                     ",".join(list(confirmed_assemblies))))
+                print(
+                    acc, 
+                    bin_sample, 
+                    ",".join(original_derived_from), 
+                    ",".join(list(confirmed_assemblies)), 
+                    sep="\t", file=out_confirmed
+                )
             elif putative_assemblies:
-                out_putative.write("{}\t{}\t{}\t{}\t{}\n".format(acc, bin_sample, ",".join(original_derived_from), ",".join(putative_assemblies), json.dumps(putative_assemblies)))
+                print(
+                    acc,
+                    bin_sample, 
+                    ",".join(original_derived_from), 
+                    ",".join(putative_assemblies),
+                    sep="\t", file=out_putative
+                )
             else:
-                out_fails.write("{}\tFound assemblies do not have sufficient matches, MAG sample {}, 'derived from' sample {}\n".format(acc, bin_sample, ",".join(original_derived_from)))
+                print(
+                    acc, 
+                    f"Found assemblies do not have sufficient matches, MAG sample {bin_sample}, 'derived from' sample {','.join(original_derived_from)}",
+                    sep="\t", file=out_fails
+                )
 
     if cleanup: 
         shutil.rmtree(download_folder)
@@ -167,7 +202,7 @@ def genbank_to_ena_wgsset_accession(acc):
         ena_accession = summary_data["summaries"][0]["wgsSet"]
         return ena_accession
     except:
-       print("Unable to convert NCBI accession {} to wgsSet accession".format(acc))
+       logging.info(f"Unable to convert NCBI accession {acc} to wgsSet accession")
        return None
 
 
@@ -176,7 +211,7 @@ def load_data(sample_id, type):
     try:
         request = run_browser_request(url)
     except:
-        print("Unable to request page content from URL for accession {}. Skipping.".format(sample_id))
+        logging.info(f"Unable to request page content from URL for accession {sample_id}. Skipping.")
         return None
     if request.ok:
         try:
@@ -186,11 +221,11 @@ def load_data(sample_id, type):
             elif type == "summary":
                 return request.json()
         except:
-            print("Unable to load json from API for accession {}".format(sample_id))
-            print(request.text)
+            logging.info("Unable to load json from API for accession {}".format(sample_id))
+            logging.info(request.text)
     else:
-        print('Could not retrieve xml for accession {}'.format(sample_id))
-        print(request.text)
+        logging.info('Could not retrieve xml for accession {}'.format(sample_id))
+        logging.info(request.text)
         return None
 
 
@@ -266,7 +301,7 @@ def get_primary_metagenome_assembly_info(sample_accessions):
 
 def decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run):
     decreased_primary_assemblies = set()
-    # print("Trying to decrease number of putative assemblies for the MAG using run(s) accessions matching...")
+    # logging.info("Trying to decrease number of putative assemblies for the MAG using run(s) accessions matching...")
     for assembly in primary_assemblies:
         assembly_run_acc = assembly2run[assembly]
         if not assembly_run_acc:
