@@ -160,13 +160,17 @@ def remove_gut_genomes(gut_mapping_file, catalogues_metadata_file):
     gut_mapping_df = pd.read_csv(gut_mapping_file, sep='\t')
     replacement_dict = dict(zip(gut_mapping_df['Genome'], gut_mapping_df['Genome_accession']))
 
-    def replace_genome_accession(row):
-        if row['Genome_accession'].startswith('GUT_GENOME'):
-            return replacement_dict.get(row['Genome'], None)
-        return row['Genome_accession']
+    # Create a mask for rows with 'GUT_GENOME'
+    mask = catalogues_metadata_df['Genome_accession'].str.startswith('GUT_GENOME')
 
-    catalogues_metadata_df['Genome_accession'] = catalogues_metadata_df.apply(replace_genome_accession, axis=1)
-    catalogues_metadata_df = catalogues_metadata_df.dropna(subset=['Genome_accession'])
+    # Replace 'GUT_GENOME' accessions with the mapped values
+    catalogues_metadata_df.loc[mask, 'Genome_accession'] = catalogues_metadata_df.loc[mask, 'Genome'].map(replacement_dict)
+
+    # Drop rows where 'Genome_accession' could not be replaced (resulting in NaN)
+    catalogues_metadata_df.dropna(subset=['Genome_accession'], inplace=True)
+
+    # Explode rows where 'Genome_accession' contains multiple values
+    catalogues_metadata_df = catalogues_metadata_df.assign(Genome_accession=catalogues_metadata_df['Genome_accession'].str.split(',')).explode('Genome_accession')
     catalogues_metadata_df.to_csv(catalogues_metadata_file, sep='\t', index=False)
     logging.info(f"Preprocessing completed successfully. Output saved to {catalogues_metadata_file}.")
 
