@@ -77,9 +77,9 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
 
     logging.info("Step 4/5:")
     logging.info("Merge all downloaded accessions removing redunduncy...")  
-    catalogues_df = pd.read_csv(catalogues_metadata_file, usecols=[2], names=['Genome_accession'],  sep='\t')
-    mag_layer_df = pd.read_csv(mag_layer_file, usecols=[0,2], names=['Genome_accession', 'Genome_NCBI_accession'], sep='\t')
-    bin_layer_df = pd.read_csv(bin_layer_file, usecols=[0], names=['Genome_accession'], sep='\t')
+    catalogues_df = pd.read_csv(catalogues_metadata_file, usecols=[2], names=['Genome_accession'],  sep='\t', skiprows=1)
+    mag_layer_df = pd.read_csv(mag_layer_file, usecols=[0,2], names=['Genome_accession', 'Genome_NCBI_accession'], sep='\t', skiprows=1)
+    bin_layer_df = pd.read_csv(bin_layer_file, usecols=[0], names=['Genome_accession'], sep='\t', skiprows=1)
     ncbi_accessions = catalogues_df[catalogues_df['Genome_accession'].str.startswith('GCA')]['Genome_accession']
     mag_layer_df = mag_layer_df[~mag_layer_df['Genome_NCBI_accession'].isin(ncbi_accessions)]
     combined_df = pd.concat([catalogues_df, mag_layer_df[['Genome_accession']], bin_layer_df], ignore_index=True)
