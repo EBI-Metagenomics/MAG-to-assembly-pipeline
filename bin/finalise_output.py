@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import argparse
+import datetime
 from pathlib import Path
 import pandas as pd
 
@@ -24,7 +25,6 @@ def main(results, catalogue_metadata, previous_table):
     merged_df = pd.merge(expanded_df, metadata_df[['Genome', 'Species_rep', "Genome_accession"]],
                      left_on='MAG_accession', right_on='Genome_accession', how='left')
     merged_df.drop(columns=['Genome_accession'], inplace=True)
-    merged_df.fillna('NA', inplace=True)
     
     merged_df['Action'] = 'add'
 
@@ -34,7 +34,14 @@ def main(results, catalogue_metadata, previous_table):
     unique_previous_df = previous_df[~previous_df['MAG_accession'].isin(new_df['MAG_accession'])]
 
     result_df = pd.concat([unique_previous_df, new_df]).reset_index(drop=True)
-    result_df.to_csv('RETROFIT.tsv', sep='\t', index=False)
+    result_df.fillna('NA', inplace=True)
+    output_file = generate_filename("mag_to_assembly_links")
+    result_df.to_csv(output_file, sep='\t', index=False)
+
+
+def generate_filename(prefix):
+    current_date = datetime.datetime.now().strftime(("%Y-%m-%d_%H%M"))
+    return f"{prefix}_{current_date}.txt"
 
 
 if __name__ == "__main__":
