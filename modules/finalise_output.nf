@@ -5,12 +5,13 @@ process POSTPROCESSING {
     input:
     path input
     path catalogue_metadata
+    path previous_table
 
     output:
-    path 'RETROFIT.tsv'
+    path 'mag_to_assembly_links.tsv'
 
     script:
     """
-    finalise_output.py --previous-table ${params.previous_table} --catalogue-metadata ${catalogue_metadata} ${input}
+    finalise_output.py --previous-table ${previous_table} --catalogue-metadata ${catalogue_metadata} ${input}
     """
 }
