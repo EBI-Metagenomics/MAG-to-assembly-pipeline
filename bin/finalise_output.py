@@ -28,20 +28,21 @@ def main(results, catalogue_metadata, previous_table):
     
     merged_df['Action'] = 'add'
 
-    new_df = merged_df[['Primary_assembly', 'MAG_accession', 'Genome', 'Species_rep', 'Action']]
+    result_df = merged_df[['Primary_assembly', 'MAG_accession', 'Genome', 'Species_rep', 'Action']]
 
-    previous_df = pd.read_csv(previous_table, sep='\t')
-    unique_previous_df = previous_df[~previous_df['MAG_accession'].isin(new_df['MAG_accession'])]
-
-    result_df = pd.concat([unique_previous_df, new_df]).reset_index(drop=True)
+    if previous_table:
+        previous_df = pd.read_csv(previous_table, sep='\t')
+        unique_previous_df = previous_df[~previous_df['MAG_accession'].isin(result_df['MAG_accession'])]
+        result_df = pd.concat([unique_previous_df, result_df]).reset_index(drop=True)
+        
     result_df.fillna('NA', inplace=True)
     output_file = generate_filename("mag_to_assembly_links")
     result_df.to_csv(output_file, sep='\t', index=False)
 
 
 def generate_filename(prefix):
-    current_date = datetime.datetime.now().strftime(("%Y-%m-%d_%H%M"))
-    return f"{prefix}_{current_date}.txt"
+    current_date = datetime.datetime.now().strftime(("%Y-%m-%d_%Hh%Mm"))
+    return f"{prefix}_{current_date}.tsv"
 
 
 if __name__ == "__main__":
@@ -49,15 +50,15 @@ if __name__ == "__main__":
     parser.add_argument("--previous-table", 
                         "-p",
                         default=None, 
-                        help="")
+                        help="Linking table generated in the previous run of the pipeline")
     parser.add_argument("--catalogue-metadata", 
                         "-m" ,
                         required=True,
                         type=Path, 
-                        help="")
+                        help="Metadata file from MGnify catalogues to take Species_rep IDs")
     parser.add_argument('results', 
                         metavar='FILE', 
                         nargs='+',
-                        help="Files produced by the main script")
+                        help="Files with links produced by the main script")
     args = parser.parse_args()
     main(args.results, args.catalogue_metadata, args.previous_table)
