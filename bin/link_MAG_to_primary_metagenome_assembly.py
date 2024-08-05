@@ -4,6 +4,7 @@
 import argparse
 import json
 import logging
+import os
 import re
 import shutil
 import urllib.parse
@@ -180,7 +181,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     sep="\t", file=out_fails
                 )
 
-    if cleanup: 
+    if cleanup and os.path.exists(download_folder): 
         shutil.rmtree(download_folder)
 
 
