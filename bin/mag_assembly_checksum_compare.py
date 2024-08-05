@@ -175,6 +175,8 @@ def get_fasta_url(accession, analysis_ftp_field="generated_ftp"):
             if not file_url.startswith('ftp://') or not file_url.startswith('https://'):
                 file_url = 'https://' +  file_url
             # TODO check if more than one file were found
+            if ';' in file_url:
+                file_url = file_url.split(";")[0]
             return file_url
     return None # no information about this accession in ENA
 
