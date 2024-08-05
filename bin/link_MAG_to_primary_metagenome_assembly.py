@@ -15,7 +15,7 @@ from tqdm import tqdm
 from retry import retry
 from mag_assembly_checksum_compare import download_fasta_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
 
-# TODO use logging module for errors and messages
+
 # TODO maybe cache 'primary' or 'non-primary' type and run accessions for assemblies to avoid unnecessary API requests?
 
 
@@ -34,7 +34,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
     # load MAG accessions from existing out files to skip them
     completed_accessions = load_completed_accessions(outfile_confirmed, outfile_putative, outfile_fails, column_index=0)
     with open(infile, "r") as file_in, open(outfile_confirmed, "a") as out_confirmed, open(outfile_putative, "a") as out_putative, open(outfile_fails, 'a') as out_fails:
-        for acc in tqdm(file_in.readlines()):     #  acc is MAG accession 
+        for acc in tqdm(file_in.readlines()):     #  acc is a MAG accession 
             acc = acc.strip()
             if acc[:3] not in ["ERZ", "GCA"]:
                 acc = acc.rstrip("0")
