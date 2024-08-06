@@ -6,18 +6,10 @@ include { POSTPROCESSING                } from '../modules/finalise_output'
 
 workflow MAG_ASSEMBLY_LINKING_PIPELINE {
 
-    // Check if test mode is enabled and use test values if true
-    if (params.test) {
-        processed_acc_ch = Channel.fromPath(params.test_processed_acc)
-        previous_table_ch = Channel.fromPath(params.test_previous_table)
-
-    } else {
-        processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc) : Channel.empty()
-        previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : Channel.empty()
-    } 
-
+    processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc) : Channel.fromPath(params.empty_file)
     DOWNLOAD_INPUT(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
 
+    // If test mode is enabled, instead of the downloaded accessions use small test file
     if (params.test) {
         accessions_list_ch = Channel.fromPath(params.test_input)
     } else {
@@ -26,11 +18,11 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
 
     // calculatePortionSize(accessions_list_ch, params.n_tasks)
     accessions_portions_ch = accessions_list_ch.splitText(by: params.portion_size, file: "portion")
-    
     FIND_PRIMARY_ASSEMBLY(accessions_portions_ch)
+
     mag_assembly_pairs_ch = FIND_PRIMARY_ASSEMBLY.output.mag_assembly_pairs
     not_linked_mags_ch = FIND_PRIMARY_ASSEMBLY.output.not_linked_mags
-
+    previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : Channel.fromPath(params.empty_file)
     final_ch = POSTPROCESSING(mag_assembly_pairs_ch.collect(), not_linked_mags_ch.collect(), DOWNLOAD_INPUT.output.metadata, processed_acc_ch, previous_table_ch)
 }
 
