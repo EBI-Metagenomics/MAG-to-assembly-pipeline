@@ -87,7 +87,7 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
 
     logging.info("Step 5/5:")
     logging.info("Remove from the output all accessions that found in the input list of previously processed genomes...")
-    if processed_acc_file:
+    if processed_acc_file and processed_acc_file.stat().st_size != 0:
         processed_df = pd.read_csv(processed_acc_file, header=None, names=["Genome_accession"], sep='\t')
         combined_df = combined_df[~combined_df['Genome_accession'].isin(processed_df['Genome_accession'])]
     else: 

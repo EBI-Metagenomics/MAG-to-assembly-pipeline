@@ -30,7 +30,7 @@ def main(results, catalogue_metadata, previous_table):
 
     result_df = merged_df[['Primary_assembly', 'MAG_accession', 'Genome', 'Species_rep', 'Action']]
 
-    if previous_table:
+    if previous_table and previous_table.stat().st_size != 0:
         previous_df = pd.read_csv(previous_table, sep='\t')
         unique_previous_df = previous_df[~previous_df['MAG_accession'].isin(result_df['MAG_accession'])]
         result_df = pd.concat([unique_previous_df, result_df]).reset_index(drop=True)
@@ -49,7 +49,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create assembly-genome linking table from the output files of the main script")
     parser.add_argument("--previous-table", 
                         "-p",
-                        default=None, 
+                        default=None,
+                        type=Path, 
                         help="Linking table generated in the previous run of the pipeline")
     parser.add_argument("--catalogue-metadata", 
                         "-m" ,
