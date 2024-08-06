@@ -7,6 +7,8 @@ process POSTPROCESSING {
     path input
     path not_linked_mags
     path catalogue_metadata
+    // inputs below are optional and can be placeholder empty files 
+    // it is required to prevent nexflow from crashing because by default it does not support optional inputs
     path previous_processed_acc, stageAs: 'previous_processed_acc.tsv'
     path previous_table, stageAs: 'previous_table.tsv'
 
