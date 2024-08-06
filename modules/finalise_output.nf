@@ -7,8 +7,8 @@ process POSTPROCESSING {
     path input
     path not_linked_mags
     path catalogue_metadata
-    path previous_processed_acc
-    path previous_table
+    path previous_processed_acc, stageAs: 'previous_processed_acc.tsv'
+    path previous_table, stageAs: 'previous_table.tsv'
 
 
     output:
@@ -17,8 +17,8 @@ process POSTPROCESSING {
 
     script:
     """
-    cat ${input} ${not_linked_mags} ${previous_processed_acc} | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
+    cat ${input} ${not_linked_mags} previous_processed_acc.tsv | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
 
-    finalise_output.py --previous-table ${previous_table} --catalogue-metadata ${catalogue_metadata} ${input}
+    finalise_output.py --previous-table previous_table.tsv --catalogue-metadata ${catalogue_metadata} ${input}
     """
 }
