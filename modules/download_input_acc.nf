@@ -14,13 +14,12 @@ process DOWNLOAD_INPUT {
     path catalogue_metadata, emit: metadata
 
     script:
+    def processed_accession = processed_acc ? "--processed-acc ${processed_acc}" : ""
     """
-
     download_genome_accessions.py \
-        --processed-acc ${processed_acc} \
+        $processed_accession \
         --output-accessions ${input_accessions} \
         --gut-mapping ${gut_mapping} \
         --catalogue-metadata ${catalogue_metadata}
-
     """
 }

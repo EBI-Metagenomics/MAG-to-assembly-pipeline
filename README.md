@@ -34,6 +34,14 @@ __If these arguments are not specified, the pipeline will run inference of MAG-t
 
 ## Usage
 
+### Locally with docker on test dataset
+
+```bash
+nextflow run -resume -profile local main.nf --external_input data/test/input_accessions.tsv --processed_acc data/test/processed_accessions.tsv --previous_table data/test/mag_to_assembly_links.tsv
+```
+
+### Slurm with singularity
+
 You can run the pipeline on SLURM with the following command (use absolute paths):
 
 ```bash

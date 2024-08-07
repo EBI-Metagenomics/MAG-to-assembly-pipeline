@@ -1,4 +1,4 @@
-process POSTPROCESSING {
+process FINALISE_OUTPUT {
     label "python_based"
     conda "${moduleDir}/environment.yml"
     

@@ -2,12 +2,12 @@
 
 include { DOWNLOAD_INPUT                } from '../modules/download_input_acc'
 include { FIND_PRIMARY_ASSEMBLY         } from '../modules/find_assembly'
-include { POSTPROCESSING                } from '../modules/finalise_output'
+include { FINALISE_OUTPUT               } from '../modules/finalise_output'
 
 workflow MAG_ASSEMBLY_LINKING_PIPELINE {
 
     // Workaround with a empty file channel is required to simulate an optional argument
-    processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc) : Channel.fromPath(params.empty_file)
+    processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc) : []
     DOWNLOAD_INPUT(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
 
     // If custom input accessions are provided, use them instead of the downloaded accessions
@@ -25,6 +25,6 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     not_linked_mags_ch = FIND_PRIMARY_ASSEMBLY.output.not_linked_mags
     // Workaround with a empty file channel is required to simulate an optional argument
     previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : Channel.fromPath(params.empty_file)
-    final_ch = POSTPROCESSING(mag_assembly_pairs_ch.collect(), not_linked_mags_ch.collect(), DOWNLOAD_INPUT.output.metadata, processed_acc_ch, previous_table_ch)
+    final_ch = FINALISE_OUTPUT(mag_assembly_pairs_ch.collect(), not_linked_mags_ch.collect(), DOWNLOAD_INPUT.output.metadata, processed_acc_ch, previous_table_ch)
 }
 

@@ -192,6 +192,7 @@ if __name__ == "__main__":
     parser.add_argument('--processed-acc', 
                         '-i',
                         default=None,
+                        required=False,
                         type=Path,
                         help='File with a list of accessions that were previously processed by the pipeline to skip them in the current run')
     parser.add_argument('--gut-mapping', 
