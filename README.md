@@ -29,7 +29,8 @@ The pipeline consists of three consecutive processes:
 __If these arguments are not specified, the pipeline will run inference of MAG-to-assembly links for all MAGs and bins deposited in the ENA and MGnify catalogues.__
 
 ### Optional 
-- `output_path`: Where to save output files. Default is `$PWD`
+- `--output_path`: Where to save output files. Default is `$PWD`
+- `--external_input`: Custom list of accessions (one per line) to process instead of ones that are downloaded from ENA/MGnify
 
 ## Usage
 
@@ -42,6 +43,6 @@ nextflow run -profile codon_slurm main.nf --previous_table /path/to/file.tsv --p
 To launch a run on a test dataset `data/test/`, use:
 
 ```bash
-nextflow run -profile codon_slurm main.nf --test=true
+nextflow run -profile codon_slurm main.nf --external_input data/test/input_accessions.tsv --processed_acc data/test/already_processed_accessions.tsv --previous_table data/test/mag_to_assembly_links.tsv
 ```
 

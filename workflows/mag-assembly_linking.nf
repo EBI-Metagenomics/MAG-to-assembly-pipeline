@@ -11,8 +11,8 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     DOWNLOAD_INPUT(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
 
     // If test mode is enabled, instead of the downloaded accessions use the small test file
-    if (params.test) {
-        accessions_list_ch = Channel.fromPath(params.test_input)
+    if (params.external_input) {
+        accessions_list_ch = Channel.fromPath(params.external_input)
     } else {
         accessions_list_ch = DOWNLOAD_INPUT.output.input_accessions
     }
