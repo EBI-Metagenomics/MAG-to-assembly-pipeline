@@ -1,7 +1,6 @@
 process POSTPROCESSING {
     label "python_based"
     conda "${moduleDir}/environment.yml"
-    publishDir "${params.output_path}", mode: 'copy'
     
     input:
     path input
