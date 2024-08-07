@@ -17,7 +17,7 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
         accessions_list_ch = DOWNLOAD_INPUT.output.input_accessions
     }
 
-    // Input accessions are splitted to processes them faster in parallel tasks
+    // Input accessions are splitted to process them faster in parallel tasks
     accessions_portions_ch = accessions_list_ch.splitText(by: params.portion_size, file: "portion")
     FIND_PRIMARY_ASSEMBLY(accessions_portions_ch)
 
