@@ -18,8 +18,13 @@ process POSTPROCESSING {
 
     script:
     """
+    
     cat ${input} ${not_linked_mags} previous_processed_acc.tsv | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
 
-    finalise_output.py --previous-table previous_table.tsv --catalogue-metadata ${catalogue_metadata} ${input}
+    finalise_output.py \
+        --previous-table previous_table.tsv \
+        --catalogue-metadata ${catalogue_metadata} \
+        ${input}
+
     """
 }

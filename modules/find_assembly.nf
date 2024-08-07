@@ -13,12 +13,12 @@ process FIND_PRIMARY_ASSEMBLY {
     """
     
     link_MAG_to_primary_metagenome_assembly.py \
-    -i ${input} \
-    -o ${input}.links.tsv \
-    -p ${input}.putative.not_linked.tsv \
-    -f ${input}.failed.not_linked.tsv \
-    --download-folder fastas \
-    --cleanup
+        -i ${input} \
+        -o ${input}.links.tsv \
+        -p ${input}.putative.not_linked.tsv \
+        -f ${input}.failed.not_linked.tsv \
+        --download-folder fastas \
+        --cleanup
 
     """
 }

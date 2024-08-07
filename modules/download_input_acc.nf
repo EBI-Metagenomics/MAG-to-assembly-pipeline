@@ -15,6 +15,12 @@ process DOWNLOAD_INPUT {
 
     script:
     """
-    download_genome_accessions.py --processed-acc ${processed_acc} --output-accessions ${input_accessions} --gut-mapping ${gut_mapping} --catalogue-metadata ${catalogue_metadata}
+
+    download_genome_accessions.py \
+        --processed-acc ${processed_acc} \
+        --output-accessions ${input_accessions} \
+        --gut-mapping ${gut_mapping} \
+        --catalogue-metadata ${catalogue_metadata}
+
     """
 }
