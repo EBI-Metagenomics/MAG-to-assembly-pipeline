@@ -24,7 +24,7 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     mag_assembly_pairs_ch = FIND_PRIMARY_ASSEMBLY.output.mag_assembly_pairs
     not_linked_mags_ch = FIND_PRIMARY_ASSEMBLY.output.not_linked_mags
     // Workaround with a empty file channel is required to simulate an optional argument
-    previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : Channel.fromPath(params.empty_file)
+    previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : []
     final_ch = FINALISE_OUTPUT(mag_assembly_pairs_ch.collect(), not_linked_mags_ch.collect(), DOWNLOAD_INPUT.output.metadata, processed_acc_ch, previous_table_ch)
 }
 
