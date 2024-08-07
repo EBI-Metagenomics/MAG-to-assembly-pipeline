@@ -10,7 +10,7 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc) : Channel.fromPath(params.empty_file)
     DOWNLOAD_INPUT(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
 
-    // If test mode is enabled, instead of the downloaded accessions use the small test file
+    // If custom input accessions are provided, use them instead of the downloaded accessions
     if (params.external_input) {
         accessions_list_ch = Channel.fromPath(params.external_input)
     } else {
