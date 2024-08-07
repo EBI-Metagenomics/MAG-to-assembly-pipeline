@@ -77,9 +77,9 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
 
     logging.info("Step 4/5:")
     logging.info("Merge all downloaded accessions removing redunduncy...")  
-    catalogues_df = pd.read_csv(catalogues_metadata_file, usecols=[2], names=['Genome_accession'],  sep='\t')
-    mag_layer_df = pd.read_csv(mag_layer_file, usecols=[0,2], names=['Genome_accession', 'Genome_NCBI_accession'], sep='\t')
-    bin_layer_df = pd.read_csv(bin_layer_file, usecols=[0], names=['Genome_accession'], sep='\t')
+    catalogues_df = pd.read_csv(catalogues_metadata_file, usecols=[2], names=['Genome_accession'],  sep='\t', skiprows=1)
+    mag_layer_df = pd.read_csv(mag_layer_file, usecols=[0,2], names=['Genome_accession', 'Genome_NCBI_accession'], sep='\t', skiprows=1)
+    bin_layer_df = pd.read_csv(bin_layer_file, usecols=[0], names=['Genome_accession'], sep='\t', skiprows=1)
     ncbi_accessions = catalogues_df[catalogues_df['Genome_accession'].str.startswith('GCA')]['Genome_accession']
     mag_layer_df = mag_layer_df[~mag_layer_df['Genome_NCBI_accession'].isin(ncbi_accessions)]
     combined_df = pd.concat([catalogues_df, mag_layer_df[['Genome_accession']], bin_layer_df], ignore_index=True)
@@ -87,7 +87,7 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
 
     logging.info("Step 5/5:")
     logging.info("Remove from the output all accessions that found in the input list of previously processed genomes...")
-    if processed_acc_file:
+    if processed_acc_file and processed_acc_file.stat().st_size != 0:
         processed_df = pd.read_csv(processed_acc_file, header=None, names=["Genome_accession"], sep='\t')
         combined_df = combined_df[~combined_df['Genome_accession'].isin(processed_df['Genome_accession'])]
     else: 
@@ -160,13 +160,17 @@ def remove_gut_genomes(gut_mapping_file, catalogues_metadata_file):
     gut_mapping_df = pd.read_csv(gut_mapping_file, sep='\t')
     replacement_dict = dict(zip(gut_mapping_df['Genome'], gut_mapping_df['Genome_accession']))
 
-    def replace_genome_accession(row):
-        if row['Genome_accession'].startswith('GUT_GENOME'):
-            return replacement_dict.get(row['Genome'], None)
-        return row['Genome_accession']
+    # Create a mask for rows with 'GUT_GENOME'
+    mask = catalogues_metadata_df['Genome_accession'].str.startswith('GUT_GENOME')
 
-    catalogues_metadata_df['Genome_accession'] = catalogues_metadata_df.apply(replace_genome_accession, axis=1)
-    catalogues_metadata_df = catalogues_metadata_df.dropna(subset=['Genome_accession'])
+    # Replace 'GUT_GENOME' accessions with the mapped values
+    catalogues_metadata_df.loc[mask, 'Genome_accession'] = catalogues_metadata_df.loc[mask, 'Genome'].map(replacement_dict)
+
+    # Drop rows where 'Genome_accession' could not be replaced (resulting in NaN)
+    catalogues_metadata_df.dropna(subset=['Genome_accession'], inplace=True)
+
+    # Explode rows where 'Genome_accession' contains multiple values
+    catalogues_metadata_df = catalogues_metadata_df.assign(Genome_accession=catalogues_metadata_df['Genome_accession'].str.split(',')).explode('Genome_accession')
     catalogues_metadata_df.to_csv(catalogues_metadata_file, sep='\t', index=False)
     logging.info(f"Preprocessing completed successfully. Output saved to {catalogues_metadata_file}.")
 
@@ -188,6 +192,7 @@ if __name__ == "__main__":
     parser.add_argument('--processed-acc', 
                         '-i',
                         default=None,
+                        required=False,
                         type=Path,
                         help='File with a list of accessions that were previously processed by the pipeline to skip them in the current run')
     parser.add_argument('--gut-mapping', 

@@ -6,10 +6,19 @@ process FIND_PRIMARY_ASSEMBLY {
     path input
 
     output:
-    path "*.confirmed.tsv"
+    path "*.links.tsv", emit: mag_assembly_pairs
+    path "*.not_linked.tsv", emit: not_linked_mags
 
     script:
     """
-    link_MAG_to_primary_metagenome_assembly.py -i ${input} -o ${input}.confirmed.tsv -p ${input}.putative.tsv -f ${input}.failed.tsv --download-folder fastas
+    
+    link_MAG_to_primary_metagenome_assembly.py \
+        -i ${input} \
+        -o ${input}.links.tsv \
+        -p ${input}.putative.not_linked.tsv \
+        -f ${input}.failed.not_linked.tsv \
+        --download-folder fastas \
+        --cleanup
+
     """
 }
