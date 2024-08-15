@@ -1,0 +1,32 @@
+nextflow_pipeline {
+
+    name "Test Workflow main.nf"
+    script "main.nf"
+
+    test("Run the pipeline on the test dataset") {
+
+        when {
+            params {
+                    // required files
+                    gut_mapping           = "${projectDir}/data/known_and_found_gut_genomes.tsv"
+
+                    // names for generated intermidiate files 
+                    input_accessions      = 'input_accessions.tsv'
+                    catalogue_metadata    = 'all_catalog_metadata.tsv'
+
+                    // user input args
+                    portion_size          = 2
+                    previous_table        = "${projectDir}/data/tests/mag_to_assembly_links.tsv"
+                    processed_acc         = "${projectDir}/data/tests/processed_accessions.tsv"
+                    external_input        = "${projectDir}/data/tests/input_accessions.tsv"
+                    output_path           = "${outputDir}"
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}
