@@ -1,0 +1,41 @@
+{
+    "Find assemblies for the test list of accessions": {
+        "content": [
+            {
+                "0": [
+                    "portion.1.links.tsv:md5,7fe78c6e1fa3fb43751142bf93f92c3b",
+                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994"
+                ],
+                "1": [
+                    [
+                        "portion.1.failed.not_linked.tsv:md5,3dc8bdbaa4fb8705e606fafdca7f9392",
+                        "portion.1.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        "portion.2.failed.not_linked.tsv:md5,7cf3bc7703fe76e435100dbac329fdf0",
+                        "portion.2.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "mag_assembly_pairs": [
+                    "portion.1.links.tsv:md5,7fe78c6e1fa3fb43751142bf93f92c3b",
+                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994"
+                ],
+                "not_linked_mags": [
+                    [
+                        "portion.1.failed.not_linked.tsv:md5,3dc8bdbaa4fb8705e606fafdca7f9392",
+                        "portion.1.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        "portion.2.failed.not_linked.tsv:md5,7cf3bc7703fe76e435100dbac329fdf0",
+                        "portion.2.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.0",
+            "nextflow": "23.04.3"
+        },
+        "timestamp": "2024-08-15T14:52:20.533170631"
+    }
+}

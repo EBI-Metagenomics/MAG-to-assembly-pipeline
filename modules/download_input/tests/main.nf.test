@@ -1,0 +1,26 @@
+nextflow_process {
+
+    name "Test Process DOWNLOAD_INPUT"
+    script "../main.nf"
+    process "DOWNLOAD_INPUT"
+
+    test("Download MAG/bin accessions from ENA/MGnify and prepare the input") {
+
+        when {
+            process {
+                """
+                input[0] = file("${projectDir}/data/tests/processed_accessions.tsv")
+                input[1] = "input_accessions.tsv"
+                input[2] = file("${projectDir}/data/known_and_found_gut_genomes.tsv")
+                input[3] = "all_catalog_metadata.tsv"
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

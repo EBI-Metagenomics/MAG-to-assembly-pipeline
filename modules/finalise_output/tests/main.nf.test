@@ -1,0 +1,28 @@
+nextflow_process {
+
+    name "Test Process FINALISE_OUTPUT"
+    script "../main.nf"
+    process "FINALISE_OUTPUT"
+
+    test("Output files preparation") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.fromPath("${moduleDir}/tests/data/*links.tsv", checkIfExists: true).collect()
+                input[1] = Channel.fromPath("${moduleDir}/tests/data/*not_linked.tsv", checkIfExists: true).collect()
+                input[2] = file("${moduleDir}/tests/data/all_catalog_metadata.tsv")
+                input[3] = file("${projectDir}/data/tests/processed_accessions.tsv")
+                input[4] = file("${projectDir}/data/tests/mag_to_assembly_links.tsv")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert snapshot(process.out).match()
+        }
+
+    }
+
+}

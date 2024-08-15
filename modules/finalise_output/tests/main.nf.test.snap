@@ -1,0 +1,19 @@
+{
+    "Output files preparation": {
+        "content": [
+            {
+                "0": [
+                    "mag_to_assembly_links_2024-08-15_15h00m.tsv:md5,083454f116f953fd5569a253c168aaf7"
+                ],
+                "1": [
+                    "processed_accessions_2024-08-15_15h00m.tsv:md5,6a007e373a51fb05ed4dfdcdf8bd9e85"
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.0",
+            "nextflow": "23.04.3"
+        },
+        "timestamp": "2024-08-15T15:01:23.288577431"
+    }
+}
