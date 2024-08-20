@@ -11,8 +11,8 @@ process FINALISE_OUTPUT {
 
 
     output:
-    path 'mag_to_assembly_links_*.tsv'
-    path 'processed_accessions_*.tsv'
+    path 'mag_to_assembly_links_*.tsv', emit: mag_to_assembly_links
+    path 'processed_accessions_*.tsv', emit: processed_accessions
 
     script:
     def processed_accessions = previous_processed_acc ? "previous_processed_acc.tsv" : ""
