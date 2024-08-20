@@ -19,6 +19,7 @@ nextflow_pipeline {
                     previous_table        = "${projectDir}/data/tests/mag_to_assembly_links.tsv"
                     processed_acc         = "${projectDir}/data/tests/processed_accessions.tsv"
                     external_input        = "${projectDir}/data/tests/input_accessions.tsv"
+                    external_metadata     = null
                     output_path           = "${outputDir}"
             }
         }
