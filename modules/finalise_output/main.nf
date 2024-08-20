@@ -17,13 +17,14 @@ process FINALISE_OUTPUT {
     script:
     def processed_accessions = previous_processed_acc ? "previous_processed_acc.tsv" : ""
     def previous_linking_table = previous_table ? "--previous-table previous_table.tsv" : ""
+    def metadata_file = catalogue_metadata ? "--catalogue-metadata ${catalogue_metadata}" : ""
     """
 
     cat ${input} ${not_linked_mags} ${processed_accessions} | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
 
     finalise_output.py \
         ${previous_linking_table} \
-        --catalogue-metadata ${catalogue_metadata} \
+        ${metadata_file}  \
         ${input}
 
     """

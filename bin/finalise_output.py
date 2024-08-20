@@ -21,11 +21,16 @@ def main(results, catalogue_metadata, previous_table):
     combined_df = pd.concat(df_list, ignore_index=True)
     expanded_df = combined_df.assign(Primary_assembly=combined_df['Primary_assembly'].str.split(',')).explode('Primary_assembly')
 
-    metadata_df = pd.read_csv(catalogue_metadata, sep='\t')
-    merged_df = pd.merge(expanded_df, metadata_df[['Genome', 'Species_rep', "Genome_accession"]],
-                     left_on='MAG_accession', right_on='Genome_accession', how='left')
-    merged_df.drop(columns=['Genome_accession'], inplace=True)
-    
+    if catalogue_metadata:
+        metadata_df = pd.read_csv(catalogue_metadata, sep='\t')
+        merged_df = pd.merge(expanded_df, metadata_df[['Genome', 'Species_rep', "Genome_accession"]],
+                             left_on='MAG_accession', right_on='Genome_accession', how='left')
+        merged_df.drop(columns=['Genome_accession'], inplace=True)
+    else:
+        merged_df = expanded_df.copy()
+        merged_df['Species_rep'] = None
+        merged_df['Genome'] = None
+
     merged_df['Action'] = 'add'
 
     result_df = merged_df[['Primary_assembly', 'MAG_accession', 'Genome', 'Species_rep', 'Action']]
@@ -54,7 +59,7 @@ if __name__ == "__main__":
                         help="Linking table generated in the previous run of the pipeline")
     parser.add_argument("--catalogue-metadata", 
                         "-m" ,
-                        required=True,
+                        default=None,
                         type=Path, 
                         help="Metadata file from MGnify catalogues to take Species_rep IDs")
     parser.add_argument('results', 
