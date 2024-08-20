@@ -19,6 +19,13 @@ nextflow_process {
 
         then {
             assert process.success
+            // check header of metadata table
+            assert path(process.out.metadata.get(0)).readLines().contains('Genome	Genome_type	Genome_accession	Species_rep')
+            // check the first line of metadata table
+            assert path(process.out.metadata.get(0)).readLines().contains('MGYG000307600	MAG	GCA_018713305	MGYG000307600')
+            // check the first line of input list of accessions
+            assert path(process.out.input_accessions.get(0)).readLines().contains('GCA_018713305')
+
         }
 
     }

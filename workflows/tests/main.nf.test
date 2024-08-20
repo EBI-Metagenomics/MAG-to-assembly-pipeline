@@ -1,0 +1,52 @@
+nextflow_workflow {
+
+    name "Test workflows/mag-assembly_linking.nf"
+    script "../mag-assembly_linking.nf"
+    workflow "MAG_ASSEMBLY_LINKING_PIPELINE"
+
+    test("Run the pipeline on the test dataset") {
+
+        when {
+            workflow {
+
+            }
+            params {
+                    // required files
+                    gut_mapping           = "${projectDir}/data/known_and_found_gut_genomes.tsv"
+
+                    // names for generated intermidiate files 
+                    input_accessions      = 'input_accessions.tsv'
+                    catalogue_metadata    = 'all_catalog_metadata.tsv'
+
+                    // user input args
+                    portion_size          = 2
+                    previous_table        = "${projectDir}/data/tests/mag_to_assembly_links.tsv"
+                    processed_acc         = "${projectDir}/data/tests/processed_accessions.tsv"
+                    external_input        = "${projectDir}/data/tests/input_accessions.tsv"
+                    external_metadata     = "${projectDir}/data/tests/all_catalog_metadata.tsv"
+                    output_path           = "${outputDir}"
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            with(workflow.out.mag_to_assembly_links_ch) {
+                // check header
+                assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action')
+                // check that line from previous tale is present
+                assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add')
+                // check that new lines from current run are added
+                assert path(get(0)).readLines().contains('ERZ1694383	GCA_905170305	MGYG000483880	MGYG000455982	add')
+                assert path(get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add')
+            }
+            with(workflow.out.processed_accessions_ch) {
+                // check that accessions from current run are added to the list of processed accessions
+                assert path(get(0)).readLines().contains('ERZ1022847')
+                assert path(get(0)).readLines().contains('ERZ1462793')
+                assert path(get(0)).readLines().contains('GCA_905170305')
+                assert path(get(0)).readLines().contains('RSAC01')
+            }   
+        }
+    }
+}
