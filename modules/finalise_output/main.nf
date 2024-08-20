@@ -25,7 +25,7 @@ process FINALISE_OUTPUT {
     finalise_output.py \
         ${previous_linking_table} \
         ${metadata_file}  \
-        ${input}
+        ${linked_tsv}
 
     """
 }
