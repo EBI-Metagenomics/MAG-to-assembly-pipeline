@@ -29,7 +29,7 @@ The pipeline consists of three consecutive processes:
 __If these arguments are not specified, the pipeline will run inference of MAG-to-assembly links for all MAGs and bins deposited in the ENA and MGnify catalogues.__
 
 ### Optional 
-- `--output_path`: Where to save output files. Default is `$PWD`
+- `--output_path`: Where to save output files. Default is `$PWD/results`
 - `--external_input`: Custom list of accessions (one per line) to process instead of ones that are downloaded from ENA/MGnify
 
 ## Usage
