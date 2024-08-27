@@ -1,6 +1,5 @@
 process DOWNLOAD_INPUT {
     label "python_based"
-    conda "${moduleDir}/environment.yml"
     
     input:
     path processed_acc
