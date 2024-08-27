@@ -6,12 +6,12 @@ include { FINALISE_OUTPUT               } from '../modules/finalise_output'
 
 workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     main:
-        processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc) : []
+        processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc, checkIfExists: true) : []
 
         // If custom input accessions are provided, use them instead of the downloaded accessions
         if (params.external_input) {
-            accessions_list_ch = Channel.fromPath(params.external_input)
-            metadata_ch = params.external_metadata ? Channel.fromPath(params.external_metadata) : []
+            accessions_list_ch = Channel.fromPath(params.external_input, checkIfExists: true)
+            metadata_ch = params.external_metadata ? Channel.fromPath(params.external_metadata, checkIfExists: true) : []
 
         } else {
             DOWNLOAD_INPUT(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
