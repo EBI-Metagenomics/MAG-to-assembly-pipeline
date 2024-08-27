@@ -34,7 +34,7 @@ nextflow_workflow {
             with(workflow.out.mag_to_assembly_links_ch) {
                 // check header
                 assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action')
-                // check that line from previous tale is present
+                // check that line from previous table is present
                 assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add')
                 // check that new lines from current run are added
                 assert path(get(0)).readLines().contains('ERZ1694383	GCA_905170305	MGYG000483880	MGYG000455982	add')

@@ -20,8 +20,8 @@ nextflow_process {
 
         then {
             assert process.success
-            assert path(process.out.mag_to_assembly_links.get(0)).md5 == "2a07a4a8839cdf8f2141d4e7a722b243"
-            assert path(process.out.processed_accessions.get(0)).md5 == "15f0a4e523046112b5514b634430f4fc"
+            assert path(process.out.mag_to_assembly_links.get(0)).md5 == "083454f116f953fd5569a253c168aaf7"
+            assert path(process.out.processed_accessions.get(0)).md5 == "6a007e373a51fb05ed4dfdcdf8bd9e85"
         }
 
     }
