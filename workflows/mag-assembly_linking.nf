@@ -20,8 +20,8 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
         }
 
         // Input accessions are splitted to process them faster in parallel tasks
-        accessions_portions_ch = accessions_list_ch.splitText(by: params.portion_size, file: "portion")
-        FIND_PRIMARY_ASSEMBLY(accessions_portions_ch)
+        accessions_batches_ch = accessions_list_ch.splitText(by: params.batch_size, file: "batch")
+        FIND_PRIMARY_ASSEMBLY(accessions_batches_ch)
 
         mag_assembly_pairs_ch = FIND_PRIMARY_ASSEMBLY.output.mag_assembly_pairs
         not_linked_mags_ch = FIND_PRIMARY_ASSEMBLY.output.not_linked_mags
