@@ -37,7 +37,10 @@ __If these arguments are not specified, the pipeline will run inference of MAG-t
 ### Locally with docker on test dataset
 
 ```bash
-nextflow run -resume -profile local main.nf --external_input data/tests/input_accessions.tsv --processed_acc data/tests/processed_accessions.tsv --previous_table data/tests/mag_to_assembly_links.tsv
+nextflow run -resume -profile local main.nf \
+--external_input data/tests/input_accessions.tsv \
+--processed_acc data/tests/processed_accessions.tsv \
+--previous_table data/tests/mag_to_assembly_links.tsv
 ```
 
 ### Slurm with singularity
@@ -51,6 +54,9 @@ nextflow run -profile codon_slurm main.nf --previous_table /path/to/file.tsv --p
 To launch a run on a test dataset `data/tests/`, use:
 
 ```bash
-nextflow run -profile codon_slurm main.nf --external_input data/tests/input_accessions.tsv --processed_acc data/tests/processed_accessions.tsv --previous_table data/tests/mag_to_assembly_links.tsv
+nextflow run -profile codon_slurm main.nf \
+--external_input data/tests/input_accessions.tsv \
+--processed_acc data/tests/processed_accessions.tsv \
+--previous_table data/tests/mag_to_assembly_links.tsv
 ```
 
