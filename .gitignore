@@ -1,0 +1,6 @@
+.nextflow/
+work
+bin/__pycache__
+.nextflow.log*
+.nf-test*
+.vscode*
