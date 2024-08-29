@@ -133,7 +133,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                 )
                 continue
             except Exception as e:
-                logging.info(f"An error occurred during downloading of MAG {acc}:", e)
+                logging.info(f"An error occurred during downloading of MAG {acc}: {e}")
                 print(
                     acc, 
                     f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
@@ -236,8 +236,8 @@ def extract_derived_from_info(attributes):
 
     for attribute in attributes:
         if all([x in attribute["TAG"] for x in ["derived", "from"]]):
-            derived_from_samples.extend(re.findall("SAM[A-Z]+\d+|ERS\d+|SRS\d+|DRS\d+", attribute["VALUE"]))
-            derived_from_runs.extend(re.findall("ERR\d+|SRR\d+|DRR\d+", attribute["VALUE"]))
+            derived_from_samples.extend(re.findall(r"SAM[A-Z]+\d+|ERS\d+|SRS\d+|DRS\d+", attribute["VALUE"]))
+            derived_from_runs.extend(re.findall(r"ERR\d+|SRR\d+|DRR\d+", attribute["VALUE"]))
             break
 
     return derived_from_samples, derived_from_runs
