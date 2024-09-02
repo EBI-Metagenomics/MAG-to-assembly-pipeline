@@ -86,7 +86,7 @@ def is_fasta_file(file_path):
         return False
 
 
-@retry(tries=3, delay=10, backoff=1.5) 
+@retry(tries=5, delay=15, backoff=1.5) 
 def download_fasta_from_ena(url, download_folder, accession, unzip=True):
     outfile = '{}.fa'.format(accession) if unzip else '{}.fa.gz'.format(accession)
     outpath = os.path.join(download_folder, outfile)
@@ -114,7 +114,7 @@ def download_fasta_from_ena(url, download_folder, accession, unzip=True):
     return None
 
 
-@retry(tries=3, delay=10, backoff=1.5) 
+@retry(tries=5, delay=15, backoff=1.5) 
 def download_fasta_from_ncbi(url, download_folder, accession):
     outfile = '{}.fa'.format(accession)
     outpath = os.path.join(download_folder, outfile)
@@ -181,7 +181,7 @@ def get_fasta_url(accession, analysis_ftp_field="generated_ftp"):
     return None # no information about this accession in ENA
 
 
-@retry(tries=3, delay=10, backoff=1.5)
+@retry(tries=5, delay=15, backoff=1.5)
 def run_request(query, api_endpoint):
     request = requests.get(api_endpoint, params=urllib.parse.urlencode(query))
     request.raise_for_status()
