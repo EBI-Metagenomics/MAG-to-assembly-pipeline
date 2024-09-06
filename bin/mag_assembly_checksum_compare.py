@@ -173,9 +173,7 @@ def get_fasta_url(accession, analysis_ftp_field="generated_ftp"):
             line = line.strip().split("\t")
             file_url = line[0]
             # TODO check if more than one file were found
-            if ';' in file_url:
-                file_url = file_url.split(";")[0]
-            return file_url
+            return file_url.split(";")[0]
     return None # no information about this accession in ENA
 
 

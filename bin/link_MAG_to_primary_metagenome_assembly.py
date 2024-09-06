@@ -273,6 +273,7 @@ def get_primary_assemblies_from_sample(sample_accessions):
         for line in response.text.splitlines():
             if not line.startswith("generated_ftp"):
                 assembly_url, assembly_accession = line.strip().split("\t")
+                assembly_url = assembly_url.split(";")[0] 
                 assembly2url[assembly_accession] = assembly_url
     return assembly2url
 
