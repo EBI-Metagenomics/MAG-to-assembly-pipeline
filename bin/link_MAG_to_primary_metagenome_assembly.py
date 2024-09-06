@@ -262,9 +262,10 @@ def get_primary_assemblies_from_sample(sample_accessions):
     assembly2url = {}
     api_endpoint = "https://www.ebi.ac.uk/ena/portal/api/search"
     for sample_accession in sample_accessions:
+        sample_type = "sample_accession" if sample_accession.startswith("SAM") else "secondary_sample_accession"
         query = {
             'result': 'analysis',
-            'query': f'analysis_type=sequence_assembly AND assembly_type="primary metagenome" AND sample_accession="{sample_accession}"',
+            'query': f'analysis_type=sequence_assembly AND assembly_type="primary metagenome" AND {sample_type}="{sample_accession}"',
             'format': 'tsv',
             'fields': 'generated_ftp_ftp,analysis_accession'
         }
