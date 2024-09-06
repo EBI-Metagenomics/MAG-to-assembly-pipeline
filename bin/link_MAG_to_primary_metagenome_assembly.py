@@ -32,7 +32,7 @@ logging.basicConfig(
 
 def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_folder, cleanup, minchecksum_match):
 
-    # load MAG accessions from existing out files to skip them
+    # load MAG accessions from existing output files to skip them
     completed_accessions = load_completed_accessions(outfile_confirmed, outfile_putative, outfile_fails, column_index=0)
     with open(infile, "r") as file_in, open(outfile_confirmed, "a") as out_confirmed, open(outfile_putative, "a") as out_putative, open(outfile_fails, 'a') as out_fails:
         for acc in tqdm(file_in.readlines()):     #  acc is a MAG accession 
