@@ -70,9 +70,9 @@ def main(input_file, output_file, download_folder, minchecksum_match):
                 out.write('{}\t{}\t{}\t{}\t{}\n'.format(mag_accession, mag_sample, derived_from_samples, ",".join(assembly_accessions), checksum_result))
 
 
-def load_completed_accessions(cache_file):
+def load_completed_accessions(cache_path):
     try:
-        with open(cache_file, "r") as f:
+        with open(cache_path, "r") as f:
             return set(line.strip().split("\t")[0] for line in f.readlines())
     except FileNotFoundError:
         return set()
@@ -90,11 +90,10 @@ def is_fasta_file(file_path):
 
 @retry(tries=5, delay=15, backoff=1.5) 
 def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> str:
-    outfile = f'{accession}.fa.gz'
-    outpath = os.path.join(download_folder, outfile)
-    cachepath = outpath + ".hash"
+    outpath = os.path.join(download_folder, f'{accession}.fa.gz')
+    cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
-        (os.path.exists(cachepath) and os.path.getsize(cachepath) != 0):
+        (os.path.exists(cache_path) and os.path.getsize(cache_path) != 0):
         return outpath
     
     if not os.path.exists(download_folder):
@@ -118,11 +117,10 @@ def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> s
 
 @retry(tries=5, delay=15, backoff=1.5) 
 def download_fasta_from_ncbi(url, download_folder, accession):
-    outfile = '{}.fa'.format(accession)
-    outpath = os.path.join(download_folder, outfile)
-    cachepath = outpath + ".hash"
+    outpath = os.path.join(download_folder, f'{accession}.fa')
+    cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
-        (os.path.exists(cachepath) and os.path.getsize(cachepath) != 0):
+        (os.path.exists(cache_path) and os.path.getsize(cache_path) != 0):
         return outpath
     if not url.lower().startswith(('ftp', 'http')):
         print(url, 'is not an URL\n')
@@ -188,15 +186,15 @@ def run_request(query, api_endpoint):
     return request
 
 
-def compute_hashes(file_path, write_cache=True, delete_fasta=True, cache_dir=None):
+def compute_hashes(file_path, write_cache=True, delete_fasta=True, separate_cache_dir=None):
     hashes = set()
-    if cache_dir:
-        cache_file = os.path.join(cache_dir, os.path.basename(file_path)) + ".hash"
-    else: 
-        cache_file = file_path + ".hash"
+    cache_path = file_path.replace(".fa.gz", ".fa") + ".hash"
+    if separate_cache_dir:
+        cache_basename = os.path.basename(cache_path)
+        cache_path = os.path.join(separate_cache_dir, cache_basename)
     
-    if os.path.exists(cache_file):
-        with open(cache_file, "r") as handle:
+    if os.path.exists(cache_path):
+        with open(cache_path, "r") as handle:
             for line in handle:
                 hashes.add(line.strip())
         return hashes
@@ -212,13 +210,13 @@ def compute_hashes(file_path, write_cache=True, delete_fasta=True, cache_dir=Non
             hashes.add(hash_object.hexdigest())
 
     if write_cache:
-        with open(cache_file, "w") as handle:
+        with open(cache_path, "w") as handle:
             for hash in hashes:
                 handle.write(hash + "\n")
 
     if delete_fasta:
         os.remove(file_path)
-        
+
     return hashes
 
 
