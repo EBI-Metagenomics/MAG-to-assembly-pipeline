@@ -11,6 +11,8 @@ import urllib.request as request
 import urllib.parse
 
 from Bio import SeqIO
+import boto3
+from botocore.config import Config
 from retry import retry
 from tqdm import tqdm
 
@@ -87,29 +89,29 @@ def is_fasta_file(file_path):
 
 
 @retry(tries=5, delay=15, backoff=1.5) 
-def download_fasta_from_ena(url, download_folder, accession, unzip=True):
-    outfile = '{}.fa'.format(accession) if unzip else '{}.fa.gz'.format(accession)
+def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> str:
+    outfile = f'{accession}.fa.gz'
     outpath = os.path.join(download_folder, outfile)
     cashpath = outpath + ".hash"
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
         (os.path.exists(cashpath) and os.path.getsize(cashpath) != 0):
         return outpath
-    if not url.lower().startswith(('ftp', 'http')):
-        print(url, 'is not an URL\n')
-        return False
+    
     if not os.path.exists(download_folder):
         os.makedirs(download_folder)
-    response = request.urlopen(url)
-    content = response.read()
+
+    fire_endpoint = "http://hl.fire.sdo.ebi.ac.uk"
+    fire_ena_bucket = "era-public"
+    fire_path = url.replace("ftp.sra.ebi.ac.uk/vol1/", "")
+
+    # Create an S3 client with the Fire endpoint and unsigned requests
+    s3 = boto3.client("s3", endpoint_url=fire_endpoint, config=Config(signature_version='unsigned'))
     
-    if unzip:
-        with open(outpath, 'wb') as out:
-            out.write(gzip.decompress(content))
-    else:
-        with open(outpath, 'wb') as out:
-            out.write(content)
-    if os.path.exists(outpath) and os.path.getsize(outpath) != 0 and is_fasta_file(outpath):
-            return outpath
+    # Download the file from the Fire storage
+    s3.download_file(fire_ena_bucket, fire_path, outpath)
+
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+        return outpath
     
     return None
 
@@ -172,8 +174,6 @@ def get_fasta_url(accession, analysis_ftp_field="generated_ftp"):
         if line.startswith("ftp"):
             line = line.strip().split("\t")
             file_url = line[0]
-            if not file_url.startswith('ftp://') or not file_url.startswith('https://'):
-                file_url = 'https://' +  file_url
             # TODO check if more than one file were found
             if ';' in file_url:
                 file_url = file_url.split(";")[0]
