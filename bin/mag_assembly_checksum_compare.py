@@ -201,16 +201,24 @@ def compute_hashes(file_path, write_cache=True, delete_fasta=True, cache_dir=Non
                 hashes.add(line.strip())
         return hashes
 
-    for record in SeqIO.parse(file_path, "fasta"):
-        hash_object = hashlib.md5(str(record.seq.upper()).encode())
-        hashes.add(hash_object.hexdigest())
+    if file_path.endswith(".gz"):
+        with gzip.open(file_path, "rt") as handle:
+            for record in SeqIO.parse(handle, "fasta"):
+                hash_object = hashlib.md5(str(record.seq.upper()).encode())
+                hashes.add(hash_object.hexdigest())
+    else:
+        for record in SeqIO.parse(file_path, "fasta"):
+            hash_object = hashlib.md5(str(record.seq.upper()).encode())
+            hashes.add(hash_object.hexdigest())
 
     if write_cache:
         with open(cache_file, "w") as handle:
             for hash in hashes:
                 handle.write(hash + "\n")
+
     if delete_fasta:
         os.remove(file_path)
+        
     return hashes
 
 
