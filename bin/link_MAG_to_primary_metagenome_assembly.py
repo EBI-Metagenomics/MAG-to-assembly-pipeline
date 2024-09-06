@@ -91,8 +91,10 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                 except:
                     print(acc, f"unable to find 'derived from' sample from run accession for {bin_sample}", sep="\t", file=out_fails)
                     continue
+            
             # in this code block: find all primary assemblies as well as their run ids linked to each of the related sample id(s)
-            primary_assemblies, assembly2run = get_primary_metagenome_assembly_info(derived_from_samples)
+            assembly2url = get_primary_assemblies_from_sample(derived_from_samples)
+            primary_assemblies = list(assembly2url.keys())
             if not primary_assemblies:    # cases when primary assembly were not uploaded to ENA
                 print(acc, f"there are no assemblies for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", sep="\t", file=out_fails)
                 continue
@@ -100,6 +102,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             # in this code block: in cases when more than 1 assembly were found, try to descrease the number of assemblies
             # discarding samples which run id(s) does not match to MAG sample run id(s)
             if len(primary_assemblies) > 1 and derived_from_runs:
+                assembly2run = get_run_accessions_for_assemblies(primary_assemblies)
                 try:
                     primary_assemblies = decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run)
                 except Exception as error:  # TODO improve this error handling
@@ -145,10 +148,10 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             putative_assemblies = {}
             mag_hashes = compute_hashes(mag_file, write_cash=False)
             for assembly in primary_assemblies:
-                assembly_url = get_fasta_url(assembly)
+                assembly_url = assembly2url[assembly]
                 assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly, unzip=True)
                 assembly_hashes = compute_hashes(assembly_file, write_cash=True)
-                if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching same MAG uploaded as ERZ as assembly as well as matching empty hashes
+                if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
                     confirmed_assemblies.append(assembly)
                 else:
                     intersection_size = len(mag_hashes.intersection(assembly_hashes))
@@ -255,64 +258,31 @@ def get_samples_from_runs(runs):
     return samples
 
 
-def is_primary_metagenome(json_data):
-    analysis_type = list(json_data["ANALYSIS_SET"]["ANALYSIS"]["ANALYSIS_TYPE"].keys())[0]
-    if analysis_type == "SEQUENCE_ASSEMBLY":
-        assembly_type = json_data["ANALYSIS_SET"]["ANALYSIS"]["ANALYSIS_TYPE"]["SEQUENCE_ASSEMBLY"]["TYPE"]
-        if assembly_type == "primary metagenome":
-            return True
-    return False
-
-
-def get_primary_metagenome_assembly_info(sample_accessions):
-    primary_assemblies = set()
-    assembly2run = {}
-    api_endpoint = "https://www.ebi.ac.uk/ena/portal/api/filereport"
+def get_primary_assemblies_from_sample(sample_accessions):
+    assembly2url = {}
+    api_endpoint = "https://www.ebi.ac.uk/ena/portal/api/search"
     for sample_accession in sample_accessions:
         query = {
-            'accession': '{}'.format(sample_accession),
             'result': 'analysis',
-            'format': 'tsv'
+            'query': f'analysis_type=sequence_assembly AND assembly_type="primary metagenome" AND sample_accession="{sample_accession}"',
+            'format': 'tsv',
+            'fields': 'generated_ftp_ftp,analysis_accession'
         }
         response = run_request(query, api_endpoint)
         for line in response.text.splitlines():
-            if not line.startswith("submitted"):
-                line = line.strip().split("\t")
-                submitted_ftp = line[0]
-                analysis_accession = line[3]
-                if not any(submitted_ftp.endswith(file_type) for file_type in [
-                                                                                ".list.gz",
-                                                                                ".vcf.gz",
-                                                                                ".vcf",
-                                                                                ".bam.gz",
-                                                                                ".bam",
-                                                                                ".bam.bai",
-                                                                                ".bam.bai.gz",
-                                                                                ".tsv",
-                                                                                ".fastq.gz",
-                                                                                ".fastq",
-                                                                            ]):
-                    assembly_data = load_data(analysis_accession, "xml")
-                    if is_primary_metagenome(assembly_data):
-                        runs = retrieve_assembly_runs_from_xml(assembly_data)
-                        assembly2run[analysis_accession] = runs
-                        primary_assemblies.add(analysis_accession)
-    return primary_assemblies, assembly2run
+            if not line.startswith("generated_ftp"):
+                assembly_url, assembly_accession = line.strip().split("\t")
+                assembly2url[assembly_accession] = assembly_url
+    return assembly2url
 
 
-def decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run):
-    decreased_primary_assemblies = set()
-    # logging.info("Trying to decrease number of putative assemblies for the MAG using run(s) accessions matching...")
-    for assembly in primary_assemblies:
-        assembly_run_acc = assembly2run[assembly]
-        if not assembly_run_acc:
-            decreased_primary_assemblies.add(assembly) # if it's impossible to find run(s) of the assembly, save it to check with checksum later
-            continue
-        if set(assembly_run_acc) == set(derived_from_runs):
-            decreased_primary_assemblies.add(assembly)
-    if decreased_primary_assemblies:
-        return decreased_primary_assemblies
-    return primary_assemblies
+def get_run_accessions_for_assemblies(assembly_accessions):
+    assembly2run = {}
+    for assembly_accession in assembly_accessions:
+        assembly_data = load_data(assembly_accession, "xml")
+        runs = retrieve_assembly_runs_from_xml(assembly_data)
+        assembly2run[assembly_accession] = runs
+    return assembly2run
 
 
 def retrieve_assembly_runs_from_xml(assembly_data):
@@ -328,6 +298,21 @@ def retrieve_assembly_runs_from_xml(assembly_data):
             return get_run_ids_from_description(analysis_description)
         except:
             return None
+
+
+def decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run):
+    decreased_primary_assemblies = set()
+    # logging.info("Trying to decrease number of putative assemblies for the MAG using run(s) accessions matching...")
+    for assembly in primary_assemblies:
+        assembly_run_acc = assembly2run[assembly]
+        if not assembly_run_acc:
+            decreased_primary_assemblies.add(assembly) # if it's impossible to find run(s) of the assembly, save it to check with checksum later
+            continue
+        if set(assembly_run_acc) == set(derived_from_runs):
+            decreased_primary_assemblies.add(assembly)
+    if decreased_primary_assemblies:
+        return decreased_primary_assemblies
+    return primary_assemblies
 
 
 def get_run_ids_from_description(description):
