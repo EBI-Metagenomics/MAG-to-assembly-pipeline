@@ -41,7 +41,7 @@ def main(input_file, output_file, download_folder, minchecksum_match):
                 mag_url = get_fasta_url(mag_accession)
                 mag_file = download_fasta_from_ena(mag_url, download_folder, mag_accession, unzip=True)
             if mag_file:
-                mag_hashes = compute_hashes(mag_file, write_cash=False)
+                mag_hashes = compute_hashes(mag_file, write_cache=False)
                 verified_assemblies = []
                 for assembly_accession in assembly_accessions:
                     assembly_url = get_fasta_url(assembly_accession)
@@ -59,7 +59,7 @@ def main(input_file, output_file, download_folder, minchecksum_match):
                                                                             ]):
                         assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly_accession, unzip=True)
                         if assembly_file:
-                            assembly_hashes = compute_hashes(assembly_file, write_cash=True)
+                            assembly_hashes = compute_hashes(assembly_file, write_cache=True)
                             if is_assembly_correct(mag_hashes, assembly_hashes, minchecksum_match): 
                                 verified_assemblies.append(assembly_accession)
                 if verified_assemblies:
@@ -92,9 +92,9 @@ def is_fasta_file(file_path):
 def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> str:
     outfile = f'{accession}.fa.gz'
     outpath = os.path.join(download_folder, outfile)
-    cashpath = outpath + ".hash"
+    cachepath = outpath + ".hash"
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
-        (os.path.exists(cashpath) and os.path.getsize(cashpath) != 0):
+        (os.path.exists(cachepath) and os.path.getsize(cachepath) != 0):
         return outpath
     
     if not os.path.exists(download_folder):
@@ -120,9 +120,9 @@ def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> s
 def download_fasta_from_ncbi(url, download_folder, accession):
     outfile = '{}.fa'.format(accession)
     outpath = os.path.join(download_folder, outfile)
-    cashpath = outpath + ".hash"
+    cachepath = outpath + ".hash"
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
-        (os.path.exists(cashpath) and os.path.getsize(cashpath) != 0):
+        (os.path.exists(cachepath) and os.path.getsize(cachepath) != 0):
         return outpath
     if not url.lower().startswith(('ftp', 'http')):
         print(url, 'is not an URL\n')
@@ -188,15 +188,15 @@ def run_request(query, api_endpoint):
     return request
 
 
-def compute_hashes(file_path, write_cash=True, delete_fasta=True, cash_dir=None):
+def compute_hashes(file_path, write_cache=True, delete_fasta=True, cache_dir=None):
     hashes = set()
-    if cash_dir:
-        cash_file = os.path.join(cash_dir, os.path.basename(file_path)) + ".hash"
+    if cache_dir:
+        cache_file = os.path.join(cache_dir, os.path.basename(file_path)) + ".hash"
     else: 
-        cash_file = file_path + ".hash"
+        cache_file = file_path + ".hash"
     
-    if os.path.exists(cash_file):
-        with open(cash_file, "r") as handle:
+    if os.path.exists(cache_file):
+        with open(cache_file, "r") as handle:
             for line in handle:
                 hashes.add(line.strip())
         return hashes
@@ -205,8 +205,8 @@ def compute_hashes(file_path, write_cash=True, delete_fasta=True, cash_dir=None)
         hash_object = hashlib.md5(str(record.seq.upper()).encode())
         hashes.add(hash_object.hexdigest())
 
-    if write_cash:
-        with open(cash_file, "w") as handle:
+    if write_cache:
+        with open(cache_file, "w") as handle:
             for hash in hashes:
                 handle.write(hash + "\n")
     if delete_fasta:

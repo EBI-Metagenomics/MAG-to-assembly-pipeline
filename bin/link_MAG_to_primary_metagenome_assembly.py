@@ -146,11 +146,11 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
 
             confirmed_assemblies = []
             putative_assemblies = {}
-            mag_hashes = compute_hashes(mag_file, write_cash=False)
+            mag_hashes = compute_hashes(mag_file, write_cache=False)
             for assembly in primary_assemblies:
                 assembly_url = assembly2url[assembly]
                 assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly, unzip=True)
-                assembly_hashes = compute_hashes(assembly_file, write_cash=True)
+                assembly_hashes = compute_hashes(assembly_file, write_cache=True)
                 if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
                     confirmed_assemblies.append(assembly)
                 else:
@@ -363,7 +363,7 @@ def parse_args():
                         help='Folder to store downloaded files. By default: fasta_downloads', 
                         default='fasta_downloads')
     parser.add_argument("--cleanup", action="store_true", 
-                        help='Remove donloaded cash of checksums and download folder after execution')
+                        help='Remove donloaded cache of checksums and download folder after execution')
     parser.add_argument("--minchecksum-match", default=0, type=int,
                         help="Minimun number of checksum matches between a MAG and an assembly to recognize as putative MAG-assembly pair. By default: 0")
     
