@@ -10,3 +10,5 @@ dependencies:
   - retry
   - biopython
   - pandas
+  - boto3
+  - botocore
