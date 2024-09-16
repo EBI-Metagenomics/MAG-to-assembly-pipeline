@@ -39,7 +39,7 @@ def main(input_file, output_file, download_folder, minchecksum_match):
                 mag_file = download_fasta_from_ncbi(mag_url, download_folder, mag_accession_version) 
             else:
                 mag_url = get_fasta_url(mag_accession)
-                mag_file = download_fasta_from_ena(mag_url, download_folder, mag_accession, unzip=True)
+                mag_file = download_fasta_from_ena(mag_url, download_folder, mag_accession)
             if mag_file:
                 mag_hashes = compute_hashes(mag_file, write_cache=False)
                 verified_assemblies = []
@@ -57,7 +57,7 @@ def main(input_file, output_file, download_folder, minchecksum_match):
                                                                                 ".fastq.gz",
                                                                                 ".fastq",
                                                                             ]):
-                        assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly_accession, unzip=True)
+                        assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly_accession)
                         if assembly_file:
                             assembly_hashes = compute_hashes(assembly_file, write_cache=True)
                             if is_assembly_correct(mag_hashes, assembly_hashes, minchecksum_match): 

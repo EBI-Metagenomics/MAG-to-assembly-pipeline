@@ -122,11 +122,11 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     try:
                         # in ENA either generated_ftp or submitted_ftp (or both) fields may contain invalid links
                         mag_url = get_fasta_url(acc)
-                        mag_file = download_fasta_from_ena(mag_url, download_folder, acc, unzip=True)
+                        mag_file = download_fasta_from_ena(mag_url, download_folder, acc)
                     except HTTPError:
                         #retry downloading using submitted_ftp instead of generated_ftp field
                         mag_url = get_fasta_url(acc, analysis_ftp_field="submitted_ftp")
-                        mag_file = download_fasta_from_ena(mag_url, download_folder, acc, unzip=True)
+                        mag_file = download_fasta_from_ena(mag_url, download_folder, acc)
             except HTTPError as e:
                 logging.info(f"HTTP Error while downloading MAG {acc}: {e.code} - {e.reason}")
                 print(
@@ -149,7 +149,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             mag_hashes = compute_hashes(mag_file, write_cache=False)
             for assembly in primary_assemblies:
                 assembly_url = assembly2url[assembly]
-                assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly, unzip=True)
+                assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly)
                 assembly_hashes = compute_hashes(assembly_file, write_cache=True)
                 if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
                     confirmed_assemblies.append(assembly)
@@ -267,7 +267,7 @@ def get_primary_assemblies_from_sample(sample_accessions):
             'result': 'analysis',
             'query': f'analysis_type=sequence_assembly AND assembly_type="primary metagenome" AND {sample_type}="{sample_accession}"',
             'format': 'tsv',
-            'fields': 'generated_ftp_ftp,analysis_accession'
+            'fields': 'generated_ftp,analysis_accession'
         }
         response = run_request(query, api_endpoint)
         for line in response.text.splitlines():
