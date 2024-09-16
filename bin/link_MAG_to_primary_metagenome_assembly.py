@@ -17,7 +17,7 @@ from retry import retry
 from mag_assembly_checksum_compare import download_fasta_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
 
 
-# TODO maybe cache 'primary' or 'non-primary' type and run accessions for assemblies to avoid unnecessary API requests?
+# TODO maybe cache run accessions for assemblies to avoid unnecessary API requests?
 
 
 logging.basicConfig(
