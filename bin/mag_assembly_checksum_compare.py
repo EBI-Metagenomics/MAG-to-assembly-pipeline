@@ -12,6 +12,7 @@ import urllib.parse
 
 from Bio import SeqIO
 import boto3
+from botocore import UNSIGNED
 from botocore.config import Config
 from retry import retry
 from tqdm import tqdm
@@ -104,7 +105,7 @@ def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> s
     fire_path = url.replace("ftp.sra.ebi.ac.uk/vol1/", "")
 
     # Create an S3 client with the Fire endpoint and unsigned requests
-    s3 = boto3.client("s3", endpoint_url=fire_endpoint, config=Config(signature_version='unsigned'))
+    s3 = boto3.client("s3", endpoint_url=fire_endpoint, config=Config(signature_version=UNSIGNED))
     
     # Download the file from the Fire storage
     s3.download_file(fire_ena_bucket, fire_path, outpath)
