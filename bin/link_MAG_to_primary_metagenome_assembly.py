@@ -14,7 +14,7 @@ import requests
 import xmltodict
 from tqdm import tqdm
 from retry import retry
-from mag_assembly_checksum_compare import download_fasta_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
+from mag_assembly_checksum_compare import download_erz_from_ena,download_mag_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
 
 
 # TODO maybe cache run accessions for assemblies to avoid unnecessary API requests?
@@ -122,11 +122,17 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     try:
                         # in ENA either generated_ftp or submitted_ftp (or both) fields may contain invalid links
                         mag_url = get_fasta_url(acc)
-                        mag_file = download_fasta_from_ena(mag_url, download_folder, acc)
+                        if acc.startswith("ERZ"):
+                            mag_file = download_erz_from_ena(mag_url, download_folder, acc)
+                        else:
+                            mag_file = download_mag_from_ena(mag_url, download_folder, acc)
                     except HTTPError:
                         #retry downloading using submitted_ftp instead of generated_ftp field
                         mag_url = get_fasta_url(acc, analysis_ftp_field="submitted_ftp")
-                        mag_file = download_fasta_from_ena(mag_url, download_folder, acc)
+                        if acc.startswith("ERZ"):
+                            mag_file = download_erz_from_ena(mag_url, download_folder, acc)
+                        else:
+                            mag_file = download_mag_from_ena(mag_url, download_folder, acc)
             except HTTPError as e:
                 logging.info(f"HTTP Error while downloading MAG {acc}: {e.code} - {e.reason}")
                 print(
@@ -149,7 +155,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             mag_hashes = compute_hashes(mag_file, write_cache=False)
             for assembly in primary_assemblies:
                 assembly_url = assembly2url[assembly]
-                assembly_file = download_fasta_from_ena(assembly_url, download_folder, assembly)
+                assembly_file = download_erz_from_ena(assembly_url, download_folder, assembly)
                 assembly_hashes = compute_hashes(assembly_file, write_cache=True)
                 if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
                     confirmed_assemblies.append(assembly)

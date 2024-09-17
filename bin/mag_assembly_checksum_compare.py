@@ -90,7 +90,7 @@ def is_fasta_file(file_path):
 
 
 @retry(tries=5, delay=15, backoff=1.5) 
-def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> str:
+def download_erz_from_ena(url: str, download_folder: str, accession: str) -> str:
     outpath = os.path.join(download_folder, f'{accession}.fa.gz')
     cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
@@ -112,6 +112,31 @@ def download_fasta_from_ena(url: str, download_folder: str, accession: str) -> s
 
     if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
         return outpath
+    
+    return None
+
+
+@retry(tries=5, delay=15, backoff=1.5) 
+def download_mag_from_ena(url, download_folder, accession):
+    outpath = os.path.join(download_folder, f'{accession}.fa.gz')
+    cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
+    if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
+        (os.path.exists(cache_path) and os.path.getsize(cache_path) != 0):
+        return outpath
+    
+    if not os.path.exists(download_folder):
+        os.makedirs(download_folder)
+
+    if not url.startswith('ftp://') or not url.startswith('https://'):
+        url = 'https://' +  url
+
+    response = request.urlopen(url)
+    content = response.read()
+    with open(outpath, 'wb') as out:
+        out.write(content)
+
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0 and is_fasta_file(outpath):
+            return outpath
     
     return None
 
