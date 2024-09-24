@@ -135,7 +135,7 @@ def download_mag_from_ena(url, download_folder, accession):
     with open(outpath, 'wb') as out:
         out.write(content)
 
-    if os.path.exists(outpath) and os.path.getsize(outpath) != 0 and is_fasta_file(outpath):
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
             return outpath
     
     return None
