@@ -2,9 +2,10 @@
 # coding=utf-8
 
 import argparse
-import os
+import csv
 import gzip 
 import hashlib
+import os
 import requests
 import shutil
 import urllib.request as request
@@ -193,13 +194,13 @@ def get_fasta_url(accession, analysis_ftp_field="generated_ftp"):
         },
     }
 
-    request = run_request(query[accession_type], api_endpoint)
-    for line in request.text.splitlines():
-        if line.startswith("ftp"):
-            line = line.strip().split("\t")
-            file_url = line[0]
-            # TODO check if more than one file were found
-            return file_url.split(";")[0]
+    response = run_request(query[accession_type], api_endpoint)
+    lines = response.text.splitlines()
+    reader = csv.DictReader(lines, delimiter="\t")
+    for row in reader:
+        field_name = query[accession_type]["fields"]
+        file_url = row[field_name].split(";")[0]  # Split to take the first FTP link if multiple
+        return file_url
     return None # no information about this accession in ENA
 
 
