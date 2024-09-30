@@ -226,7 +226,7 @@ def decrease_number_of_assemblies(assembly2metadata, bin_runs):
     for assembly, (_, assembly_run_acc) in list(assembly2metadata.items()):
         if not assembly_run_acc: # if run(s) of the assembly not found, save it to check with checksum later
             continue
-        if set(assembly_run_acc) != set(bin_runs):
+        if {assembly_run_acc} != set(bin_runs):
             del assembly2metadata[assembly]
 
     return assembly2metadata
