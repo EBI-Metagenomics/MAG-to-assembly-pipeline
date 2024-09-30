@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import argparse
+import csv
 import json
 import logging
 import os
@@ -16,8 +17,8 @@ from tqdm import tqdm
 from retry import retry
 from mag_assembly_checksum_compare import download_erz_from_ena,download_mag_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
 
-
-# TODO maybe cache run accessions for assemblies to avoid unnecessary API requests?
+# TODO one download function for everything with ENA API
+# TODO add docs for functions and Type Annotations
 
 def setup_logging(debug=False):
     log_level = logging.DEBUG if debug else logging.INFO
@@ -27,236 +28,267 @@ def setup_logging(debug=False):
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler()]
     )
-    logging.getLogger('requests').setLevel(logging.WARNING)
-    logging.getLogger('boto3').setLevel(logging.WARNING)
-    logging.getLogger('botocore').setLevel(logging.WARNING)
-    logging.getLogger('urllib').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    logging.getLogger('s3transfer').setLevel(logging.WARNING)
+    # Reduce logging for noisy libraries
+    for noisy_lib in ['requests', 'boto3', 'botocore', 'urllib', 'urllib3', 's3transfer']:
+        logging.getLogger(noisy_lib).setLevel(logging.WARNING)
 
 
 def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_folder, cleanup, minchecksum_match):
+    with open(infile, "r") as file_in, open(outfile_confirmed, "w") as out_confirmed, open(outfile_putative, "w") as out_putative, open(outfile_fails, 'w') as out_fails:
+        for acc in tqdm(file_in.readlines()):     #  acc is a MAG/bin accession 
+            acc = acc.strip() if acc[:3] in ["ERZ", "GCA"] else acc.strip().rstrip("0")
 
-    logging.debug("Loading MAG accessions from the input file as well as from existing output files to skip them...")
-    completed_accessions = load_completed_accessions(outfile_confirmed, outfile_putative, outfile_fails, column_index=0)
-    with open(infile, "r") as file_in, open(outfile_confirmed, "a") as out_confirmed, open(outfile_putative, "a") as out_putative, open(outfile_fails, 'a') as out_fails:
-        for acc in tqdm(file_in.readlines()):     #  acc is a MAG accession 
-            acc = acc.strip()
             logging.debug(f"Start processing of MAG/bin with accession {acc}")
-            if acc[:3] not in ["ERZ", "GCA"]:
-                acc = acc.rstrip("0")
-            if acc in completed_accessions:
-                logging.debug(f"The accession is in the list of completed accessions. Skipping")
-                continue 
 
-            logging.debug(f"Query ENA portal to get sample accession corresponding to the MAG/bin {acc}")
-            try:
-                if acc.startswith("ERZ"):
-                    logging.debug(f"{acc} is an ENA analysis accession, retrieving metadata in XML from ENA portal")
-                    mag_ena_data = load_data(acc, type="xml")
-                    bin_sample = mag_ena_data['ANALYSIS_SET']['ANALYSIS']['SAMPLE_REF']['IDENTIFIERS']['PRIMARY_ID']
-                elif acc.startswith("GCA"):
-                    logging.debug(f"{acc} is a NCBI genome accession, retrieving summary for corresponding WGS set accession from ENA portal")
-                    mag_ena_data = load_data(genbank_to_ena_wgsset_accession(acc), type="summary")
-                else:
-                    logging.debug(f"{acc} is a ENA WGS set accession, retrieving summary from ENA portal")
-                    mag_ena_data = load_data(acc, type="summary")
-                    bin_sample = mag_ena_data["summaries"][0]["sample"]
-                logging.debug(f"Successful. MAG/bin {acc} sample accession is {bin_sample}")
-            except:
+            logging.debug(f"Query ENA portal to get bin sample accession corresponding to the MAG/bin {acc}")
+            bin_sample = find_bin_sample_in_ena(acc)
+            if not bin_sample:
                 logging.debug(f"{acc} Unable to find sample accession. Skipping")
                 print(acc, "unable to find sample accession", sep="\t", file=out_fails)
                 continue
-
-            # in this code block: for the determined sample id request upper level 'derived from' sample id(s) as well as run id(s) of the MAG
+            logging.debug(f"Successful. MAG/bin {acc} sample accession is {bin_sample}")
+        
             logging.debug(f"Use ENA portal to find root sample accession and run accessions corresponding to the MAG/bin {acc}")
-            try:
-                logging.debug(f"Retrieving metadata in XML for accession {bin_sample} from ENA portal")
-                sample_ena_data = load_data(bin_sample, type="xml")
-                sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"]["SAMPLE_ATTRIBUTE"]
-            except:
-                logging.info(f"Unable to find any related sample for {acc}. Skipping")
-                print(acc, f"unable to load xml for {bin_sample}", sep="\t", file=out_fails)
+            derived_from, derived_from_samples, derived_from_runs = find_root_sample_and_run_in_ena(bin_sample)
+            if not derived_from:
+                print(acc, f"unable to load XML or 'derived from' field does not exist in XML, MAG sample {bin_sample}", sep="\t", file=out_fails)
                 continue
-            # attempting to retrieve either run id(s) or related sample id(s) from 'derived from' field
-            logging.debug(f"Parsing sample attributes in XML metadata")
-            derived_from_samples, derived_from_runs = extract_derived_from_info(sample_attributes)
-            original_derived_from = derived_from_samples
-            # this condition is required to find MAG samples that does not contain any needed information
-            # or contain it in unexpected fields
-            if not derived_from_samples and not derived_from_runs:
-                print(acc, f"'derived from' field does not exist in XML or does not contain neither run nor sample accessions, MAG sample {bin_sample}", sep="\t", file=out_fails)
-                logging.debug(f"'derived from' field does not exist in XML or does not contain neither run nor sample accessions, MAG sample {bin_sample}. Skipping")
-                continue   
-            logging.debug(f"According to the metadata bin sample was derived from {','.join(original_derived_from)}")
-            # if 'derived from' field does not contain any run id(s), look for them in the "description" field
-            if not derived_from_runs:
-                logging.debug(f"'derived from' field does not contain any run id(s). Look for runs accessions in the metadata description")
-                try:
-                    description = sample_ena_data['SAMPLE_SET']['SAMPLE']['DESCRIPTION']
-                    derived_from_runs = get_run_ids_from_description(description)
-                    assert derived_from_runs
-                    logging.debug(f"The following run accessions were found: {','.join(derived_from_runs)}")
-                except:
-                    logging.debug(f"Failed to identify run accessions for MAG/bin {acc}, {bin_sample}")
-                    logging.debug("Comparson of run accessions for the MAG/bin {acc} and primary assemblies will be skipped")
-            # if "derived from" field does not contain any related sample id(s), look for them in the run(s) info using ENA API
             if not derived_from_samples:
-                logging.debug("'derived from' field does not contain sample accessions. Root sample will be identified through run accession")
-                original_derived_from = derived_from_runs
-                try:
-                    derived_from_samples = get_samples_from_runs(derived_from_runs)
-                    assert derived_from_samples
-                    logging.debug(f"The following sample accessions were found: {','.join(derived_from_runs)}")
-                except:
-                    logging.debug(f"unable to find root sample from run accession for {bin_sample}. Skipping")
-                    print(acc, f"unable to find 'derived from' sample from run accession for {bin_sample}", sep="\t", file=out_fails)
-                    continue
+                print(acc, f"unable to find 'derived from' sample from run metadata for {bin_sample}", sep="\t", file=out_fails)
+                continue
+            if not derived_from_runs:
+                logging.debug(f"No bin's runs. Comparson of run accessions for the MAG/bin {acc} and primary assemblies will be skipped")
             
-            # in this code block: find all primary assemblies as well as their run ids linked to each of the related sample id(s)
-            logging.debug(f"Find all primary metagenomic assemblies linked to the root sample {','.join(derived_from_runs)}")
-            assembly2url = get_primary_assemblies_from_sample(derived_from_samples)
-            primary_assemblies = list(assembly2url.keys())
-            if not primary_assemblies:    # cases when primary assembly were not uploaded to ENA
+            logging.debug(f"Find all primary metagenomic assemblies linked to the root sample {','.join(derived_from_samples)}")
+            primary_assemblies_dict = get_primary_assemblies_from_sample(derived_from_samples)
+            if not primary_assemblies_dict:    # cases when primary assembly was not uploaded to ENA
                 logging.debug(f"There are no assemblies for the given root sample")
                 print(acc, f"there are no assemblies for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", sep="\t", file=out_fails)
                 continue
-            logging.debug(f"The following primary assemblies were found {','.join(primary_assemblies)}")
+            logging.debug(f"Successful. The following primary assemblies were found {','.join(primary_assemblies_dict.keys())}")
 
-            # in this code block: in cases when more than 1 assembly were found, try to descrease the number of assemblies
-            # discarding samples which run id(s) does not match to MAG sample run id(s)
-            if len(primary_assemblies) > 1 and derived_from_runs:
-                logging.debug(f"Attempt to decrease list of assemblies by filtering assemblies derived from the runs other than MAG runs.")
-                assembly2run = get_run_accessions_for_assemblies(primary_assemblies)
+            if len(primary_assemblies_dict) > 1 and derived_from_runs:
+                logging.debug(f"Attempt to decrease list of assemblies by filtering assemblies derived from the runs other than MAG runs")
                 try:
-                    primary_assemblies = decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run)
-                    logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies)}")
+                    primary_assemblies_dict = decrease_number_of_assemblies(primary_assemblies_dict, derived_from_runs)
                 except Exception as error:  # TODO improve this error handling
                     logging.debug(f"Unable to decrease number of assemblies for MAG {acc}, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}")
                     logging.debug(f"Due to {str(error)}")
+                if not primary_assemblies_dict:
+                    logging.debug(f"All found primary assemblies were discarded during run comparason. Skipping")
+                    print(acc, f"there are no assemblies for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", sep="\t", file=out_fails)
+                    continue
+                logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies_dict.keys())}")
 
-            # in this code block: verify retrieved assemblies using checksum comparason
             logging.debug(f"Verify retrieved assemblies using comparason of contigs' hashes")
-            try:
-                if acc.startswith("GCA"):
-                    if not "." in acc:
-                        acc_version = acc + '.1'
-                    else:
-                        acc_version = acc
-                    mag_url = get_fasta_url(acc_version)
-                    logging.debug(f"Starting download of MAG/bin {acc} from NCBI using URL {mag_url}")
-                    mag_file = download_fasta_from_ncbi(mag_url, download_folder, acc_version)
-                    logging.debug(f"Successful. File saved to {mag_file}")
-                else:
-                    try:
-                        # in ENA either generated_ftp or submitted_ftp (or both) fields may contain invalid links
-                        mag_url = get_fasta_url(acc)
-                        if acc.startswith("ERZ"):
-                            logging.debug(f"Download MAG/bin {acc} from ENA FIRE using URL {mag_url}")
-                            mag_file = download_erz_from_ena(mag_url, download_folder, acc)
-                            logging.debug(f"Successful. File saved to {mag_file}")
-                        else:
-                            logging.debug(f"Download MAG/bin {acc} from ENA FTP using URL {mag_url}")
-                            mag_file = download_mag_from_ena(mag_url, download_folder, acc)
-                            logging.debug(f"Successful. File saved to {mag_file}")
-                    except HTTPError:
-                        logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
-                        mag_url = get_fasta_url(acc, analysis_ftp_field="submitted_ftp")
-                        if acc.startswith("ERZ"):
-                            logging.debug(f"Download MAG/bin {acc} from ENA FIRE using URL {mag_url}")
-                            mag_file = download_erz_from_ena(mag_url, download_folder, acc)
-                            logging.debug(f"Successful. File saved to {mag_file}")
-                        else:
-                            logging.debug(f"Download MAG/bin {acc} from ENA FTP using URL {mag_url}")
-                            mag_file = download_mag_from_ena(mag_url, download_folder, acc)
-                            logging.debug(f"Successful. File saved to {mag_file}")
-                    except botocore.exeptions.BotocoreError:
-                        print("failed to download assembly", assembly, assembly_url)
-                        continue
-
-            except HTTPError as e:
-                logging.info(f"HTTP Error while downloading MAG {acc}: {e.code} - {e.reason}. Skipping")
-                print(
-                    acc, 
-                    f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", 
-                    sep="\t", file=out_fails
-                )
-                continue
-            except Exception as e:
-                logging.info(f"An error occurred during downloading of MAG {acc}: {e}. Skipping")
+            mag_file = download_bin_fasta(acc, download_folder)
+            if not mag_file:
                 print(
                     acc, 
                     f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
                     sep="\t", file=out_fails
                 )
                 continue
-
-            confirmed_assemblies = []
-            putative_assemblies = {}
-            mag_hashes = compute_hashes(mag_file, write_cache=False)
-            logging.debug(f"MAG/bin hashes were computed")
-            for assembly in primary_assemblies:
-                try:
-                    assembly_url = assembly2url[assembly]
-                    logging.debug(f"Download primary assembly {assembly} from ENA FTP using URL {assembly_url}")
-                    assembly_file = download_erz_from_ena(assembly_url, download_folder, assembly)
-                    logging.debug(f"Successful. File saved to {assembly_file}")
-                except botocore.exceptions.ClientError:
-                    print("failed to download assembly", assembly, assembly_url)
-                    continue
-                assembly_hashes = compute_hashes(assembly_file, write_cache=True)
-                logging.debug(f"Assembly hashes were computed")
-                if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
-                    logging.debug(f"Assembly {assembly} is confirmed to be primary assembly for the MAG/bin {acc}")
-                    confirmed_assemblies.append(assembly)
-                else:
-                    logging.debug(f"Assembly {assembly} is not a primary assembly for the MAG/bin {acc}")
-                    intersection_size = len(mag_hashes.intersection(assembly_hashes))
-                    if intersection_size >= minchecksum_match:
-                        putative_assemblies[assembly] = intersection_size
-                
+            logging.debug(f"Successful. File saved to {mag_file}")
+            logging.debug(f"Start comparing MAG hashes to every primary assembly")
+            confirmed_assemblies, putative_assemblies = compare_bin_and_assembly_hashes(acc, mag_file, primary_assemblies_dict, download_folder, minchecksum_match)
+            logging.debug(f"Comparason finished")
             
             # Write a line to the output TSV file
             # Columns are      Genome_acc    Sample      Derived_from_sample     Derived_from_assembly
             logging.debug(f"Writing results to the output file")
             if confirmed_assemblies:
-                print(
-                    acc, 
-                    bin_sample, 
-                    ",".join(original_derived_from), 
-                    ",".join(list(confirmed_assemblies)), 
-                    sep="\t", file=out_confirmed
-                )
+                print(acc, bin_sample, ",".join(derived_from), ",".join(confirmed_assemblies), sep="\t", file=out_confirmed)
             elif putative_assemblies:
-                print(
-                    acc,
-                    bin_sample, 
-                    ",".join(original_derived_from), 
-                    ",".join(putative_assemblies),
-                    sep="\t", file=out_putative
-                )
+                logging.info(f"Putative assemblies found for {acc}")
+                print(acc, bin_sample, ",".join(derived_from), ",".join(putative_assemblies), sep="\t", file=out_putative)
             else:
-                print(
-                    acc, 
-                    f"Found assemblies do not have sufficient matches, MAG sample {bin_sample}, 'derived from' sample {','.join(original_derived_from)}",
-                    sep="\t", file=out_fails
-                )
+                logging.warning(f"No matches for {acc}")
+                print(acc, f"No sufficient matches for {bin_sample}, derived from {','.join(derived_from)}", file=out_fails)
     
     if cleanup and os.path.exists(download_folder):
         shutil.rmtree(download_folder)
         logging.debug(f"Folder with downloaded files is deleted")
 
 
-def load_completed_accessions(*files, column_index=0, filter_value="", separtor="\t"):
-    completed_accessions = set()
-    for file in files:
+def find_bin_sample_in_ena(acc):
+    try:
+        if acc.startswith("ERZ"):
+            logging.debug(f"{acc} is an ENA analysis accession, retrieving metadata in XML from ENA portal")
+            mag_ena_data = load_data(acc, type="xml")
+            return mag_ena_data['ANALYSIS_SET']['ANALYSIS']['SAMPLE_REF']['IDENTIFIERS']['PRIMARY_ID']
+        elif acc.startswith("GCA"):
+            logging.debug(f"{acc} is a NCBI genome accession, retrieving summary for corresponding WGS set accession from ENA portal")
+            wgs_set_acc = genbank_to_ena_wgsset_accession(acc)
+            mag_ena_data = load_data(wgs_set_acc, type="summary")
+            return mag_ena_data["summaries"][0]["sample"]
+        else:
+            logging.debug(f"{acc} is an ENA WGS set accession, retrieving summary from ENA portal")
+            mag_ena_data = load_data(acc, type="summary")
+            return mag_ena_data["summaries"][0]["sample"]
+    except Exception as e:
+        logging.debug(f"Failed to fetch sample accession for {acc} due to {e}")
+        return None
+
+
+def find_root_sample_and_run_in_ena(bin_sample):
+    try:
+        logging.debug(f"Retrieving metadata in XML for accession {bin_sample} from ENA portal")
+        sample_ena_data = load_data(bin_sample, type="xml")
+        sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"]["SAMPLE_ATTRIBUTE"]
+        logging.debug(f"Parsing sample attributes in XML metadata")
+        derived_from_samples, derived_from_runs = extract_derived_from_info(sample_attributes)
+        assert derived_from_runs or derived_from_samples
+    except Exception as e:
+        logging.info(f"Unable to get or parse bin sample XML for {bin_sample} due to: {e}")
+        return None, None, None
+    
+    derived_from = derived_from_samples if derived_from_samples else derived_from_runs
+    logging.debug(f"According to the metadata bin sample was derived from {','.join(derived_from)}")
+
+    # if 'derived from' field does not contain any run id(s), look for them in the "description" field
+    if not derived_from_runs:
+        logging.debug(f"Look for runs accessions in the bin sample metadata <DESCRIPTION> field")
         try:
-            with open(file, "r") as f:
-                accessions = set(line.strip().split(separtor)[column_index] for line in f.readlines() if filter_value in line)
-                completed_accessions.update(accessions)
-        except FileNotFoundError:
+            description = sample_ena_data['SAMPLE_SET']['SAMPLE']['DESCRIPTION']
+            derived_from_runs = get_run_ids_from_description(description)
+            assert derived_from_runs
+            logging.debug(f"The following run accessions were found: {','.join(derived_from_runs)}")
+            return derived_from, derived_from_samples, derived_from_runs
+        except:
+            logging.debug(f"Failed to identify run accessions for bin sample {bin_sample}")
+            return derived_from, derived_from_samples, None
+    
+    # if "derived from" field does not contain any related sample id(s), look for them in the run(s) metadata using ENA API
+    if not derived_from_samples:
+        logging.debug("Root sample will be identified through run accession(s)")
+        try:
+            derived_from_samples = get_samples_from_runs(derived_from_runs)
+            assert derived_from_samples
+            logging.debug(f"The following sample accessions were found: {','.join(derived_from_samples)}")
+            return derived_from, derived_from_samples, derived_from_runs
+        except:
+            logging.debug(f"unable to find root sample from run accession for {bin_sample}")
+            return derived_from, None, derived_from_runs
+        
+    return derived_from, derived_from_samples, derived_from_runs
+
+
+def get_primary_assemblies_from_sample(sample_accessions):
+    primary_assemblies_dict = {}
+    api_endpoint = "https://www.ebi.ac.uk/ena/portal/api/search"
+    for sample_accession in sample_accessions:
+        sample_type = "sample_accession" if sample_accession.startswith("SAM") else "secondary_sample_accession"
+        query = {
+            'result': 'analysis',
+            'query': f'analysis_type=sequence_assembly AND assembly_type="primary metagenome" AND {sample_type}="{sample_accession}"',
+            'format': 'tsv',
+            'fields': 'generated_ftp,run_accession,analysis_accession'
+        }
+        response = run_request(query, api_endpoint)
+        lines = response.text.splitlines()
+        reader = csv.DictReader(lines, delimiter="\t")
+        
+        for row in reader:
+            assembly_url = row['generated_ftp'].split(";")[0]  # Split to take the first FTP link if multiple
+            run_accession = row['run_accession']
+            assembly_accession = row['analysis_accession']
+            primary_assemblies_dict[assembly_accession] = (assembly_url, run_accession)
+    
+    return primary_assemblies_dict
+
+
+def get_run_accessions_for_assemblies(assembly_accessions):
+    assembly2run = {}
+    for assembly_accession in assembly_accessions:
+        assembly_data = load_data(assembly_accession, "xml")
+        runs = retrieve_assembly_runs_from_xml(assembly_data)
+        assembly2run[assembly_accession] = runs
+    return assembly2run
+
+
+def retrieve_assembly_runs_from_xml(assembly_data):
+    try:
+        run_ref_data = assembly_data["ANALYSIS_SET"]["ANALYSIS"]["RUN_REF"]
+        if isinstance(run_ref_data, list):
+            return [run["IDENTIFIERS"]["PRIMARY_ID"] for run in run_ref_data]
+        else: 
+            return [run_ref_data["IDENTIFIERS"]["PRIMARY_ID"]]
+    except KeyError:
+        try:
+            analysis_description = assembly_data['ANALYSIS_SET']['ANALYSIS']['DESCRIPTION']
+            return get_run_ids_from_description(analysis_description)
+        except:
+            return None
+
+
+def decrease_number_of_assemblies(assembly2metadata, bin_runs):
+    for assembly, (_, assembly_run_acc) in list(assembly2metadata.items()):
+        if not assembly_run_acc: # if run(s) of the assembly not found, save it to check with checksum later
+            continue
+        if set(assembly_run_acc) != set(bin_runs):
+            del assembly2metadata[assembly]
+
+    return assembly2metadata
+
+
+def download_bin_fasta(acc, download_folder):
+    try:
+        if acc.startswith("GCA"):
+            acc_version = acc if "." in acc else acc + '.1'   # hack to process GCAs from MGnify catalogues
+            mag_url = get_fasta_url(acc_version)
+            logging.debug(f"Starting download of MAG/bin {acc} from NCBI using URL {mag_url}")
+            return download_fasta_from_ncbi(mag_url, download_folder, acc_version)
+        else:
+            try:
+                mag_url = get_fasta_url(acc, analysis_ftp_field="generated_ftp")
+                if acc.startswith("ERZ"):
+                    logging.debug(f"Download bin {acc} from ENA FIRE using URL {mag_url}")
+                    return download_erz_from_ena(mag_url, download_folder, acc)
+                else:
+                    logging.debug(f"Download MAG {acc} from ENA FTP using URL {mag_url}")
+                    return download_mag_from_ena(mag_url, download_folder, acc)
+            # in ENA generated_ftp or submitted_ftp (or both) fields may contain invalid links
+            except HTTPError:
+                logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
+                mag_url = get_fasta_url(acc, analysis_ftp_field="submitted_ftp")
+                if acc.startswith("ERZ"):
+                    logging.debug(f"Download MAG/bin {acc} from ENA FIRE using URL {mag_url}")
+                    return download_erz_from_ena(mag_url, download_folder, acc)
+                else:
+                    logging.debug(f"Download MAG/bin {acc} from ENA FTP using URL {mag_url}")
+                    return download_mag_from_ena(mag_url, download_folder, acc)
+    except HTTPError as e:
+        logging.debug(f"HTTP Error while downloading MAG {acc}: {e.code} - {e.reason}")
+        return None
+    except Exception as e:
+        logging.info(f"An error occurred during downloading of MAG {acc}: {e}. Skipping")
+        return None
+
+
+def compare_bin_and_assembly_hashes(acc, mag_file, assembly2metadata, download_folder, minchecksum_match):
+    confirmed_assemblies = []
+    putative_assemblies = {}
+    mag_hashes = compute_hashes(mag_file, write_cache=False)
+    logging.debug(f"MAG/bin hashes were computed")
+    for assembly in assembly2metadata:
+        assembly_url, _ = assembly2metadata[assembly]
+        logging.debug(f"Download primary assembly {assembly} from ENA FIRE using URL {assembly_url}")
+        assembly_file = download_erz_from_ena(assembly_url, download_folder, assembly)
+        if not assembly_file:
             pass
-    return completed_accessions
+        logging.debug(f"Successful. File saved to {assembly_file}")
+        assembly_hashes = compute_hashes(assembly_file, write_cache=True)
+        logging.debug(f"Assembly hashes were computed")
+        if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
+            logging.debug(f"Assembly {assembly} is confirmed to be primary assembly for the MAG/bin {acc}")
+            confirmed_assemblies.append(assembly)
+        else:
+            logging.debug(f"Assembly {assembly} is not a primary assembly for the MAG/bin {acc}")
+            intersection_size = len(mag_hashes.intersection(assembly_hashes))
+            if intersection_size >= minchecksum_match:
+                putative_assemblies[assembly] = intersection_size
+    return confirmed_assemblies, putative_assemblies
 
 
 def genbank_to_ena_wgsset_accession(acc):
@@ -315,65 +347,6 @@ def get_samples_from_runs(runs):
                 samples.append(sample)
                 break
     return samples
-
-
-def get_primary_assemblies_from_sample(sample_accessions):
-    assembly2url = {}
-    api_endpoint = "https://www.ebi.ac.uk/ena/portal/api/search"
-    for sample_accession in sample_accessions:
-        sample_type = "sample_accession" if sample_accession.startswith("SAM") else "secondary_sample_accession"
-        query = {
-            'result': 'analysis',
-            'query': f'analysis_type=sequence_assembly AND assembly_type="primary metagenome" AND {sample_type}="{sample_accession}"',
-            'format': 'tsv',
-            'fields': 'generated_ftp,analysis_accession'
-        }
-        response = run_request(query, api_endpoint)
-        for line in response.text.splitlines():
-            if not line.startswith("generated_ftp"):
-                assembly_url, assembly_accession = line.strip().split("\t")
-                assembly_url = assembly_url.split(";")[0] 
-                assembly2url[assembly_accession] = assembly_url
-    return assembly2url
-
-
-def get_run_accessions_for_assemblies(assembly_accessions):
-    assembly2run = {}
-    for assembly_accession in assembly_accessions:
-        assembly_data = load_data(assembly_accession, "xml")
-        runs = retrieve_assembly_runs_from_xml(assembly_data)
-        assembly2run[assembly_accession] = runs
-    return assembly2run
-
-
-def retrieve_assembly_runs_from_xml(assembly_data):
-    try:
-        run_ref_data = assembly_data["ANALYSIS_SET"]["ANALYSIS"]["RUN_REF"]
-        if isinstance(run_ref_data, list):
-            return [run["IDENTIFIERS"]["PRIMARY_ID"] for run in run_ref_data]
-        else: 
-            return [run_ref_data["IDENTIFIERS"]["PRIMARY_ID"]]
-    except KeyError:
-        try:
-            analysis_description = assembly_data['ANALYSIS_SET']['ANALYSIS']['DESCRIPTION']
-            return get_run_ids_from_description(analysis_description)
-        except:
-            return None
-
-
-def decrease_number_of_assemblies(primary_assemblies, derived_from_runs, assembly2run):
-    decreased_primary_assemblies = set()
-    # logging.info("Trying to decrease number of putative assemblies for the MAG using run(s) accessions matching...")
-    for assembly in primary_assemblies:
-        assembly_run_acc = assembly2run[assembly]
-        if not assembly_run_acc:
-            decreased_primary_assemblies.add(assembly) # if it's impossible to find run(s) of the assembly, save it to check with checksum later
-            continue
-        if set(assembly_run_acc) == set(derived_from_runs):
-            decreased_primary_assemblies.add(assembly)
-    if decreased_primary_assemblies:
-        return decreased_primary_assemblies
-    return primary_assemblies
 
 
 def get_run_ids_from_description(description):
