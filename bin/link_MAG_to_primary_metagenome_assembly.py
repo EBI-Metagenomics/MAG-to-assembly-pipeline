@@ -4,20 +4,24 @@
 import argparse
 import csv
 import json
+import gzip
 import logging
 import os
 import re
 import shutil
 import urllib.parse
+import urllib.request as request
 from urllib.error import HTTPError
 
+import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
 import requests
 import xmltodict
 from tqdm import tqdm
 from retry import retry
-from mag_assembly_checksum_compare import download_erz_from_ena,download_mag_from_ena,download_fasta_from_ncbi,compute_hashes,get_fasta_url
+from mag_assembly_checksum_compare import compute_hashes,get_fasta_url
 
-# TODO one download function for everything with ENA API
 # TODO add docs for functions and Type Annotations
 
 def setup_logging(debug=False):
@@ -81,17 +85,17 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                 logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies_dict.keys())}")
 
             logging.debug(f"Verify retrieved assemblies using comparason of contigs' hashes")
-            mag_file = download_bin_fasta(acc, download_folder)
-            if not mag_file:
+            mag_hashes = handle_fasta_processing(acc, download_folder)
+            if not mag_hashes:
                 print(
                     acc, 
                     f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
                     sep="\t", file=out_fails
                 )
                 continue
-            logging.debug(f"Successful. File saved to {mag_file}")
+            logging.debug(f"MAG/bin hashes were computed")
             logging.debug(f"Start comparing MAG hashes to every primary assembly")
-            confirmed_assemblies, putative_assemblies = compare_bin_and_assembly_hashes(acc, mag_file, primary_assemblies_dict, download_folder, minchecksum_match)
+            confirmed_assemblies, putative_assemblies = compare_bin_and_assembly_hashes(acc, mag_hashes, primary_assemblies_dict, download_folder, minchecksum_match)
             logging.debug(f"Comparason finished")
             
             # Write a line to the output TSV file
@@ -100,10 +104,8 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             if confirmed_assemblies:
                 print(acc, bin_sample, ",".join(derived_from), ",".join(confirmed_assemblies), sep="\t", file=out_confirmed)
             elif putative_assemblies:
-                logging.info(f"Putative assemblies found for {acc}")
                 print(acc, bin_sample, ",".join(derived_from), ",".join(putative_assemblies), sep="\t", file=out_putative)
             else:
-                logging.warning(f"No matches for {acc}")
                 print(acc, f"No sufficient matches for {bin_sample}, derived from {','.join(derived_from)}", file=out_fails)
     
     if cleanup and os.path.exists(download_folder):
@@ -138,9 +140,9 @@ def find_root_sample_and_run_in_ena(bin_sample):
         sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"]["SAMPLE_ATTRIBUTE"]
         logging.debug(f"Parsing sample attributes in XML metadata")
         derived_from_samples, derived_from_runs = extract_derived_from_info(sample_attributes)
-        assert derived_from_runs or derived_from_samples
+        assert derived_from_runs or derived_from_samples, "No 'derived from' attribute"
     except Exception as e:
-        logging.info(f"Unable to get or parse bin sample XML for {bin_sample} due to: {e}")
+        logging.debug(f"Unable to get bin sample XML or parse its attributes for {bin_sample} due to: {e}")
         return None, None, None
     
     derived_from = derived_from_samples if derived_from_samples else derived_from_runs
@@ -232,53 +234,99 @@ def decrease_number_of_assemblies(assembly2metadata, bin_runs):
     return assembly2metadata
 
 
-def download_bin_fasta(acc, download_folder):
+def handle_fasta_processing(accession, download_folder):
     try:
-        if acc.startswith("GCA"):
-            acc_version = acc if "." in acc else acc + '.1'   # hack to process GCAs from MGnify catalogues
-            mag_url = get_fasta_url(acc_version)
-            logging.debug(f"Starting download of MAG/bin {acc} from NCBI using URL {mag_url}")
-            return download_fasta_from_ncbi(mag_url, download_folder, acc_version)
-        else:
-            try:
-                mag_url = get_fasta_url(acc, analysis_ftp_field="generated_ftp")
-                if acc.startswith("ERZ"):
-                    logging.debug(f"Download bin {acc} from ENA FIRE using URL {mag_url}")
-                    return download_erz_from_ena(mag_url, download_folder, acc)
-                else:
-                    logging.debug(f"Download MAG {acc} from ENA FTP using URL {mag_url}")
-                    return download_mag_from_ena(mag_url, download_folder, acc)
+        outpath = os.path.join(download_folder, f'{accession}.fa.gz')
+        cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
+        if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
+            (os.path.exists(cache_path) and os.path.getsize(cache_path) != 0):
+            return compute_hashes(outpath, write_cache=False)
+        
+        if not os.path.exists(download_folder):
+            os.makedirs(download_folder)
+            logging.debug(f"Directory {download_folder} is created")
+
+        if accession.startswith("ERZ"):
             # in ENA generated_ftp or submitted_ftp (or both) fields may contain invalid links
-            except HTTPError:
+            try:
+                fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
+                return compute_hashes(fasta_file, write_cache=True)
+            except (HTTPError, gzip.BadGzipFile):
                 logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
-                mag_url = get_fasta_url(acc, analysis_ftp_field="submitted_ftp")
-                if acc.startswith("ERZ"):
-                    logging.debug(f"Download MAG/bin {acc} from ENA FIRE using URL {mag_url}")
-                    return download_erz_from_ena(mag_url, download_folder, acc)
-                else:
-                    logging.debug(f"Download MAG/bin {acc} from ENA FTP using URL {mag_url}")
-                    return download_mag_from_ena(mag_url, download_folder, acc)
+                fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
+                return compute_hashes(fasta_file, write_cache=True)
+        elif accession.startswith("GCA"):
+            fasta_file = download_from_ENA_API(accession, outpath)
+            return compute_hashes(fasta_file, write_cache=False)
+        else:
+            fasta_file = download_from_ENA_FTP(accession, outpath)
+            return compute_hashes(fasta_file, write_cache=False)
+
     except HTTPError as e:
-        logging.debug(f"HTTP Error while downloading MAG {acc}: {e.code} - {e.reason}")
+        logging.debug(f"HTTP Error while downloading MAG {accession}: {e.code} - {e.reason}")
         return None
     except Exception as e:
-        logging.info(f"An error occurred during downloading of MAG {acc}: {e}. Skipping")
+        logging.info(f"An error occurred during downloading of MAG {accession}: {e}. Skipping")
         return None
 
 
-def compare_bin_and_assembly_hashes(acc, mag_file, assembly2metadata, download_folder, minchecksum_match):
+@retry(tries=5, delay=15, backoff=1.5) 
+def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
+    url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
+    logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
+
+    fire_endpoint = "http://hl.fire.sdo.ebi.ac.uk"
+    fire_ena_bucket = "era-public"
+    fire_path = url.replace("ftp.sra.ebi.ac.uk/vol1/", "")
+    s3 = boto3.client("s3", endpoint_url=fire_endpoint, config=Config(signature_version=UNSIGNED))
+    s3.download_file(fire_ena_bucket, fire_path, outpath)
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+        logging.debug(f"Successful. File saved to {outpath}")
+        return outpath
+    return None
+
+
+def download_from_ENA_API(accession: str, outpath: str) -> str:
+    api_endpoint = f"https://www.ebi.ac.uk/ena/browser/api/fasta/{accession}"
+    logging.debug(f"Download {accession} from ENA API using URL {api_endpoint}")
+    query = {
+        'download': 'true',
+        'gzip': 'true'
+    }
+    response = run_request(query, api_endpoint)
+    with open(outpath, 'wb') as out:
+        out.write(response.content)
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+        logging.debug(f"Successful. File saved to {outpath}")
+        return outpath
+    return None
+
+
+@retry(tries=5, delay=15, backoff=1.5) 
+def download_from_ENA_FTP(accession, outpath):
+    url = get_fasta_url(accession)
+    logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
+    
+    if not url.startswith('ftp://') or not url.startswith('https://'):
+        url = 'https://' +  url
+        
+    response = request.urlopen(url)
+    content = response.read()
+    with open(outpath, 'wb') as out:
+        out.write(content)
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+            return outpath
+    return None
+
+
+def compare_bin_and_assembly_hashes(acc, mag_hashes, assembly2metadata, download_folder, minchecksum_match):
     confirmed_assemblies = []
     putative_assemblies = {}
-    mag_hashes = compute_hashes(mag_file, write_cache=False)
-    logging.debug(f"MAG/bin hashes were computed")
     for assembly in assembly2metadata:
         assembly_url, _ = assembly2metadata[assembly]
-        logging.debug(f"Download primary assembly {assembly} from ENA FIRE using URL {assembly_url}")
-        assembly_file = download_erz_from_ena(assembly_url, download_folder, assembly)
-        if not assembly_file:
+        assembly_hashes = handle_fasta_processing(assembly, download_folder)
+        if not assembly_hashes:
             pass
-        logging.debug(f"Successful. File saved to {assembly_file}")
-        assembly_hashes = compute_hashes(assembly_file, write_cache=True)
         logging.debug(f"Assembly hashes were computed")
         if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
             logging.debug(f"Assembly {assembly} is confirmed to be primary assembly for the MAG/bin {acc}")
