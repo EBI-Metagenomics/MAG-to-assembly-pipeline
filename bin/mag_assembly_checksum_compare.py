@@ -91,7 +91,7 @@ def is_fasta_file(file_path):
 
 
 @retry(tries=5, delay=15, backoff=1.5) 
-def download_erz_from_ena(url: str, download_folder: str, accession: str) -> str:
+def download_from_ENA_FIRE(url: str, download_folder: str, accession: str) -> str:
     outpath = os.path.join(download_folder, f'{accession}.fa.gz')
     cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
@@ -118,7 +118,7 @@ def download_erz_from_ena(url: str, download_folder: str, accession: str) -> str
 
 
 @retry(tries=5, delay=15, backoff=1.5) 
-def download_mag_from_ena(url, download_folder, accession):
+def download_from_ENA_FTP(url, download_folder, accession):
     outpath = os.path.join(download_folder, f'{accession}.fa.gz')
     cache_path = os.path.join(download_folder, f'{accession}.fa.hash')
     if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or \
