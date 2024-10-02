@@ -23,7 +23,7 @@ from retry import retry
 from mag_assembly_checksum_compare import compute_hashes,get_fasta_url
 
 # TODO add docs for functions and Type Annotations
-# TODO handle empty hashes
+# TODO look for primary assemblies even if bin sample is bio sample? 
 
 def setup_logging(debug=False):
     log_level = logging.DEBUG if debug else logging.INFO
@@ -48,7 +48,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             logging.debug(f"Query ENA portal to get bin sample accession corresponding to the MAG/bin {acc}")
             bin_sample = find_bin_sample_in_ena(acc)
             if not bin_sample:
-                logging.debug(f"{acc} Unable to find sample accession. Skipping")
+                logging.info(f"{acc} Unable to find sample accession. Skipping")
                 print(acc, "unable to find sample accession", sep="\t", file=out_fails)
                 continue
             logging.debug(f"Successful. MAG/bin {acc} sample accession is {bin_sample}")
@@ -88,7 +88,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             logging.debug(f"Verify retrieved assemblies using comparason of contigs' hashes")
             mag_hashes = handle_fasta_processing(acc, download_folder)
             if not mag_hashes:
-                logging.debug(f"Failed to do download MAG {acc} fasta file. Skipping")
+                logging.info(f"Failed to do download MAG {acc} fasta file. Skipping")
                 print(
                     acc, 
                     f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
@@ -298,7 +298,7 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
 @retry(tries=5, delay=15, backoff=1.5) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
-    logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
+    logging.debug(f"Download {accession} from ENA FTP using URL {url}")
     
     if not url.startswith('ftp://') or not url.startswith('https://'):
         url = 'https://' +  url
