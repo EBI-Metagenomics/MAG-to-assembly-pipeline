@@ -200,15 +200,6 @@ def get_primary_assemblies_from_sample(sample_accessions):
     return primary_assemblies_dict
 
 
-def get_run_accessions_for_assemblies(assembly_accessions):
-    assembly2run = {}
-    for assembly_accession in assembly_accessions:
-        assembly_data = load_data(assembly_accession, "xml")
-        runs = retrieve_assembly_runs_from_xml(assembly_data)
-        assembly2run[assembly_accession] = runs
-    return assembly2run
-
-
 def retrieve_assembly_runs_from_xml(assembly_data):
     try:
         run_ref_data = assembly_data["ANALYSIS_SET"]["ANALYSIS"]["RUN_REF"]
