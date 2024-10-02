@@ -81,7 +81,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     logging.debug(f"Unable to decrease number of assemblies for MAG {acc}, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}")
                     logging.debug(f"Due to {str(error)}")
                 if not primary_assemblies_dict:
-                    logging.debug(f"All found primary assemblies were discarded during run comparason. Skipping")
+                    logging.info(f"All found primary assemblies were discarded during run comparason. Skipping")
                     print(acc, f"there are no assemblies for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}", sep="\t", file=out_fails)
                     continue
                 logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies_dict.keys())}")
