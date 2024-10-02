@@ -23,6 +23,7 @@ from retry import retry
 from mag_assembly_checksum_compare import compute_hashes,get_fasta_url
 
 # TODO add docs for functions and Type Annotations
+# TODO handle empty hashes
 
 def setup_logging(debug=False):
     log_level = logging.DEBUG if debug else logging.INFO
