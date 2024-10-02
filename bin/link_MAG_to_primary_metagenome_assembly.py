@@ -344,7 +344,7 @@ def genbank_to_ena_wgsset_accession(acc):
 
 
 def load_data(sample_id, type):
-    url = 'https://www.ebi.ac.uk/ena/browser/api/{}/{}'.format(type, sample_id)
+    url = f'https://www.ebi.ac.uk/ena/browser/api/{type}/{sample_id}'
     try:
         request = run_browser_request(url)
     except:
@@ -358,10 +358,10 @@ def load_data(sample_id, type):
             elif type == "summary":
                 return request.json()
         except:
-            logging.info("Unable to load json from API for accession {}".format(sample_id))
+            logging.info(f"Unable to load json from API for accession {sample_id}")
             logging.info(request.text)
     else:
-        logging.info('Could not retrieve xml for accession {}'.format(sample_id))
+        logging.info(f'Could not retrieve xml for accession {sample_id}')
         logging.info(request.text)
         return None
 
