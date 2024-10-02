@@ -123,10 +123,9 @@ def find_bin_sample_in_ena(acc):
             mag_ena_data = load_data(acc, type="xml")
             return mag_ena_data['ANALYSIS_SET']['ANALYSIS']['SAMPLE_REF']['IDENTIFIERS']['PRIMARY_ID']
         elif acc.startswith("GCA"):
-            logging.debug(f"{acc} is a NCBI genome accession, retrieving summary for corresponding WGS set accession from ENA portal")
-            wgs_set_acc = genbank_to_ena_wgsset_accession(acc)
-            mag_ena_data = load_data(wgs_set_acc, type="summary")
-            return mag_ena_data["summaries"][0]["sample"]
+            logging.debug(f"{acc} is a NCBI genome accession, retrieving metadata in XML from ENA portal")
+            mag_ena_data = load_data(acc, type="xml")
+            return mag_ena_data['ASSEMBLY_SET']['ASSEMBLY']['SAMPLE_REF']['IDENTIFIERS']['PRIMARY_ID']
         else:
             logging.debug(f"{acc} is an ENA WGS set accession, retrieving summary from ENA portal")
             mag_ena_data = load_data(acc, type="summary")
