@@ -16,6 +16,7 @@ from urllib.error import HTTPError
 import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
+from botocore.exceptions import ClientError
 import requests
 import xmltodict
 from tqdm import tqdm
@@ -244,7 +245,7 @@ def handle_fasta_processing(accession, download_folder):
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
                 return compute_hashes(fasta_file, write_cache=True)
-            except (HTTPError, gzip.BadGzipFile):
+            except (HTTPError, gzip.BadGzipFile, ClientError):
                 logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
                 return compute_hashes(fasta_file, write_cache=True)
