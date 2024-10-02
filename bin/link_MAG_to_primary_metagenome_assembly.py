@@ -317,7 +317,6 @@ def compare_bin_and_assembly_hashes(acc, mag_hashes, assembly2metadata, download
     confirmed_assemblies = []
     putative_assemblies = {}
     for assembly in assembly2metadata:
-        assembly_url, _ = assembly2metadata[assembly]
         assembly_hashes = handle_fasta_processing(assembly, download_folder)
         if not assembly_hashes:
             logging.debug(f"Failed to download primary assembly {assembly} fasta file.")
