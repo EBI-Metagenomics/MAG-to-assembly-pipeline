@@ -88,6 +88,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             logging.debug(f"Verify retrieved assemblies using comparason of contigs' hashes")
             mag_hashes = handle_fasta_processing(acc, download_folder)
             if not mag_hashes:
+                logging.debug(f"Failed to do download MAG {acc} fasta file. Skipping")
                 print(
                     acc, 
                     f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
@@ -140,7 +141,7 @@ def find_root_sample_and_run_in_ena(bin_sample):
         sample_ena_data = load_data(bin_sample, type="xml")
         sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"]["SAMPLE_ATTRIBUTE"]
         logging.debug(f"Parsing sample attributes in XML metadata")
-        derived_from_samples, derived_from_runs = extract_derived_from_info(sample_attributes)
+        derived_from_samples, derived_from_runs = parse_derived_from_attribute(sample_attributes)
         assert derived_from_runs or derived_from_samples, "No 'derived from' attribute"
     except Exception as e:
         logging.debug(f"Unable to get bin sample XML or parse its attributes for {bin_sample} due to: {e}")
@@ -255,10 +256,10 @@ def handle_fasta_processing(accession, download_folder):
             return compute_hashes(fasta_file, write_cache=False)
 
     except HTTPError as e:
-        logging.debug(f"HTTP Error while downloading MAG {accession}: {e.code} - {e.reason}")
+        logging.info(f"HTTP Error while downloading MAG {accession}: {e.code} - {e.reason}")
         return None
     except Exception as e:
-        logging.info(f"An error occurred during downloading of MAG {accession}: {e}. Skipping")
+        logging.info(f"An error occurred during downloading of MAG {accession}: {e}")
         return None
 
 
@@ -301,7 +302,7 @@ def download_from_ENA_FTP(accession, outpath):
     
     if not url.startswith('ftp://') or not url.startswith('https://'):
         url = 'https://' +  url
-        
+
     response = request.urlopen(url)
     content = response.read()
     with open(outpath, 'wb') as out:
@@ -318,7 +319,8 @@ def compare_bin_and_assembly_hashes(acc, mag_hashes, assembly2metadata, download
         assembly_url, _ = assembly2metadata[assembly]
         assembly_hashes = handle_fasta_processing(assembly, download_folder)
         if not assembly_hashes:
-            pass
+            logging.debug(f"Failed to download primary assembly {assembly} fasta file.")
+            continue
         logging.debug(f"Assembly hashes were computed")
         if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
             logging.debug(f"Assembly {assembly} is confirmed to be primary assembly for the MAG/bin {acc}")
@@ -346,7 +348,7 @@ def load_data(sample_id, type):
     try:
         request = run_browser_request(url)
     except:
-        logging.info(f"Unable to request page content from URL for accession {sample_id}. Skipping.")
+        logging.info(f"Unable to request page content from URL for accession {sample_id}.")
         return None
     if request.ok:
         try:
@@ -364,7 +366,7 @@ def load_data(sample_id, type):
         return None
 
 
-def extract_derived_from_info(attributes):
+def parse_derived_from_attribute(attributes):
     derived_from_samples = []
     derived_from_runs = []
 
