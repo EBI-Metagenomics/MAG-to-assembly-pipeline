@@ -260,7 +260,7 @@ def handle_fasta_processing(accession, download_folder):
         logging.info(f"HTTP Error while downloading MAG {accession}: {e.code} - {e.reason}")
         return None
     except Exception as e:
-        logging.info(f"An error occurred during downloading of MAG {accession}: {e}")
+        logging.info(f"An error occurred during download of MAG {accession}: {e}")
         return None
 
 
@@ -319,7 +319,7 @@ def compare_bin_and_assembly_hashes(acc, mag_hashes, assembly2metadata, download
     for assembly in assembly2metadata:
         assembly_hashes = handle_fasta_processing(assembly, download_folder)
         if not assembly_hashes:
-            logging.debug(f"Failed to download primary assembly {assembly} fasta file.")
+            logging.info(f"For the MAG {acc} failed to download primary assembly {assembly} fasta file.")
             continue
         logging.debug(f"Assembly hashes were computed")
         if mag_hashes.issubset(assembly_hashes): # TODO modify to avoid matching empty file hashes
