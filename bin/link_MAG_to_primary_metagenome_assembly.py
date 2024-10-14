@@ -263,7 +263,7 @@ def handle_fasta_processing(accession, download_folder):
         return None
 
 
-@retry(tries=5, delay=15, backoff=1.5) 
+@retry(tries=5, delay=15, backoff=5) 
 def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
     url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
     logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
@@ -279,6 +279,7 @@ def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str
     return None
 
 
+@retry(tries=5, delay=15, backoff=5) 
 def download_from_ENA_API(accession: str, outpath: str) -> str:
     api_endpoint = f"https://www.ebi.ac.uk/ena/browser/api/fasta/{accession}"
     logging.debug(f"Download {accession} from ENA API using URL {api_endpoint}")
@@ -286,7 +287,9 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
         'download': 'true',
         'gzip': 'true'
     }
-    response = run_request(query, api_endpoint)
+    response = requests.get(api_endpoint, params=urllib.parse.urlencode(query))
+    response.raise_for_status()
+    
     with open(outpath, 'wb') as out:
         out.write(response.content)
     if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
@@ -295,7 +298,7 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
     return None
 
 
-@retry(tries=5, delay=15, backoff=1.5) 
+@retry(tries=5, delay=15, backoff=5) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
@@ -408,14 +411,14 @@ def get_run_ids_from_description(description):
     return unfolded_accessions
 
 
-@retry(tries=5, delay=10, backoff=1.5)
+@retry(tries=5, delay=15, backoff=1.5)
 def run_browser_request(url):
     request = requests.get(url)
     request.raise_for_status()
     return request
 
 
-@retry(tries=5, delay=10, backoff=1.5)
+@retry(tries=5, delay=15, backoff=1.5)
 def run_request(query, api_endpoint):
     request = requests.get(api_endpoint, params=urllib.parse.urlencode(query))
     request.raise_for_status()
