@@ -242,7 +242,7 @@ def handle_fasta_processing(accession, download_folder):
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
                 return compute_hashes(fasta_file, write_cache=True)
-            except (HTTPError, gzip.BadGzipFile, ClientError):
+            except (gzip.BadGzipFile, ClientError):
                 logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
                 return compute_hashes(fasta_file, write_cache=True)
@@ -253,7 +253,7 @@ def handle_fasta_processing(accession, download_folder):
             fasta_file = download_from_ENA_FTP(accession, outpath)
             return compute_hashes(fasta_file, write_cache=False)
 
-    except HTTPError as e:
+    except requests.HTTPError as e:
         logging.info(f"HTTP Error while downloading MAG {accession}: {e.code} - {e.reason}")
         return None
     except Exception as e:
