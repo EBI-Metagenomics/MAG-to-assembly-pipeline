@@ -301,7 +301,7 @@ def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
     
-    if not url.startswith('ftp://') or not url.startswith('https://'):
+    if not (url.startswith('ftp://') or url.startswith('https://')):
         url = 'https://' +  url
 
     response = requests.get(url)
