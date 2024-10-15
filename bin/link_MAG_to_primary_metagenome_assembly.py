@@ -141,8 +141,11 @@ def find_root_sample_and_run_in_ena(bin_sample):
         logging.debug(f"Parsing sample attributes in XML metadata")
         derived_from_samples, derived_from_runs = parse_derived_from_attribute(sample_attributes)
         assert derived_from_runs or derived_from_samples, "No 'derived from' attribute"
+    except AssertionError as e:
+        logging.debug(f"Unable to parse sample XML attributes for {bin_sample} due to: {e}")
+        return None, None, None
     except Exception as e:
-        logging.debug(f"Unable to get bin sample XML or parse its attributes for {bin_sample} due to: {e}")
+        logging.info(f"Unable to get bin sample XML or parse its attributes for {bin_sample} due to: {e}")
         return None, None, None
     
     derived_from = derived_from_samples if derived_from_samples else derived_from_runs
