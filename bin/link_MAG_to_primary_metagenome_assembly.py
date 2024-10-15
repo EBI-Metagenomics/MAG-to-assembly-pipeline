@@ -10,8 +10,6 @@ import os
 import re
 import shutil
 import urllib.parse
-import urllib.request as request
-from urllib.error import HTTPError
 
 import boto3
 from botocore import UNSIGNED
