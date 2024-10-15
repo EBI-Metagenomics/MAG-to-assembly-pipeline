@@ -306,11 +306,13 @@ def download_from_ENA_FTP(accession, outpath):
     if not url.startswith('ftp://') or not url.startswith('https://'):
         url = 'https://' +  url
 
-    response = request.urlopen(url)
-    content = response.read()
+    response = requests.get(url)
+    response.raise_for_status()
+
     with open(outpath, 'wb') as out:
-        out.write(content)
+        out.write(response.content)
     if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+            logging.debug(f"Successful. File saved to {outpath}")
             return outpath
     return None
 
