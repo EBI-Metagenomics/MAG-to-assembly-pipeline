@@ -279,7 +279,7 @@ def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str
     return None
 
 
-@retry(tries=5, delay=15, backoff=5) 
+@retry(tries=8, delay=15, backoff=5) 
 def download_from_ENA_API(accession: str, outpath: str) -> str:
     api_endpoint = f"https://www.ebi.ac.uk/ena/browser/api/fasta/{accession}"
     logging.debug(f"Download {accession} from ENA API using URL {api_endpoint}")
@@ -298,7 +298,7 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
     return None
 
 
-@retry(tries=5, delay=15, backoff=5) 
+@retry(tries=8, delay=15, backoff=5) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
