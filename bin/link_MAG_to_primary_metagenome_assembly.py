@@ -14,7 +14,7 @@ import urllib.parse
 import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ParamValidationError
 import requests
 import xmltodict
 from tqdm import tqdm
@@ -245,7 +245,7 @@ def handle_fasta_processing(accession, download_folder):
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
                 return compute_hashes(fasta_file, write_cache=True)
-            except (gzip.BadGzipFile, ClientError):
+            except (gzip.BadGzipFile, ClientError, ParamValidationError):
                 logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
                 return compute_hashes(fasta_file, write_cache=True)
@@ -257,10 +257,10 @@ def handle_fasta_processing(accession, download_folder):
             return compute_hashes(fasta_file, write_cache=False)
 
     except requests.HTTPError as e:
-        logging.info(f"HTTP Error while downloading MAG {accession}: {e.code} - {e.reason}")
+        logging.info(f"HTTP Error while downloading {accession}: {e.code} - {e.reason}")
         return None
     except Exception as e:
-        logging.info(f"An error occurred during download of MAG {accession}: {e}")
+        logging.info(f"An error occurred during download of {accession}: {e}")
         return None
 
 
