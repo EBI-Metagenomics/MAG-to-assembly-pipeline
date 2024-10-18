@@ -25,7 +25,7 @@ from mag_assembly_checksum_compare import compute_hashes,get_fasta_url
 # TODO add docs for functions and Type Annotations
 # TODO look for primary assemblies even if bin sample is bio sample? 
 
-def setup_logging(debug=False):
+def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
     log_level = logging.DEBUG if debug else logging.INFO
     
     logging.basicConfig(
@@ -33,6 +33,13 @@ def setup_logging(debug=False):
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler()]
     )
+    
+    error_handler = logging.FileHandler(error_logfile)
+    error_handler.setLevel(logging.ERROR)
+    simple_error_formatter = logging.Formatter('%(message)s')
+    error_handler.setFormatter(simple_error_formatter)
+    logging.getLogger().addHandler(error_handler)
+
     # Reduce logging for noisy libraries
     for noisy_lib in ['requests', 'boto3', 'botocore', 'urllib', 'urllib3', 's3transfer']:
         logging.getLogger(noisy_lib).setLevel(logging.WARNING)
