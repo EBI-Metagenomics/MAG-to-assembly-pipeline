@@ -265,7 +265,7 @@ def handle_fasta_processing(accession, download_folder):
         return None
 
 
-@retry(tries=5, delay=15, backoff=5) 
+@retry(tries=5, delay=15, backoff=1.5) 
 def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
     url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
     logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
