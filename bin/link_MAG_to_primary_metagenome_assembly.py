@@ -390,26 +390,17 @@ def genbank_to_ena_wgsset_accession(acc):
        return None
 
 
-def load_data(sample_id, type):
-    url = f'https://www.ebi.ac.uk/ena/browser/api/{type}/{sample_id}'
+def load_data(accession, type):
+    url = f'https://www.ebi.ac.uk/ena/browser/api/{type}/{accession}'
     try:
         request = run_browser_request(url)
-    except:
-        logging.info(f"Unable to request page content from URL for accession {sample_id}.")
-        return None
-    if request.ok:
-        try:
-            if type == "xml":
+        if type == "xml":
                 data_dict = xmltodict.parse(request.content)
                 return json.loads(json.dumps(data_dict))
-            elif type == "summary":
+        elif type == "summary":
                 return request.json()
-        except:
-            logging.info(f"Unable to load json from API for accession {sample_id}")
-            logging.info(request.text)
-    else:
-        logging.info(f'Could not retrieve xml for accession {sample_id}')
-        logging.info(request.text)
+    except Exception as e:
+        logging.error(f"{accession} Unable to request page content from URL {url} due to: {e}")
         return None
 
 
