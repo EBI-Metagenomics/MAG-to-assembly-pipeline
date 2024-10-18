@@ -309,6 +309,35 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
     return None
 
 
+def download_from_NCBI_datasets(accession, download_folder):
+    outpath = f'{accession}.fa'
+    accession_version = accession if "." in accession else accession + ".1"
+    url = f"https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/{accession_version}/download"
+    query = {
+        'include_annotation_type': 'GENOME_FASTA',
+    }
+    response = requests.get(url, params=urllib.parse.urlencode(query))
+    response.raise_for_status()
+
+    content = response.read()
+    tmp_archive = "ncbi_tmp.zip"
+    tmp_archive_path = os.path.join(download_folder, tmp_archive)
+    tmp_path = tmp_archive_path.replace(".zip", "")
+    with open(tmp_archive_path, 'wb') as out:
+        out.write(content)
+    shutil.unpack_archive(tmp_archive_path, tmp_path)
+    subdir_path = os.path.join(download_folder, f"ncbi_tmp/ncbi_dataset/data/{accession_version}/")
+    source_file = [file for file in os.listdir(subdir_path) if file.endswith("_genomic.fna")]
+    source_path = os.path.join(subdir_path, source_file[0]) # assembly_file is a list with one element
+    shutil.move(source_path, outpath)
+    os.remove(tmp_archive_path)
+    shutil.rmtree(tmp_path)
+    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+        logging.debug(f"Successful. File saved to {outpath}")
+        return outpath
+    return None
+
+
 @retry(tries=8, delay=15, backoff=5) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
