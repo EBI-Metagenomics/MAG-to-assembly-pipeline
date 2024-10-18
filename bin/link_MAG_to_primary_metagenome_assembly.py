@@ -245,16 +245,22 @@ def handle_fasta_processing(accession, download_folder):
             # in ENA generated_ftp or submitted_ftp (or both) fields may contain invalid links
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
+                if fasta_file is None:
+                    raise ValueError("Empty URL or download failure for 'generated_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
-            except (gzip.BadGzipFile, ClientError, ParamValidationError):
+            except (gzip.BadGzipFile, ClientError, ParamValidationError, ValueError):
                 logging.debug(f'Download from "generated_ftp" failed. Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
+                if fasta_file is None:
+                    raise ValueError("Empty URL or download failure for 'submitted_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
         elif accession.startswith("GCA"):
             fasta_file = download_from_ENA_API(accession, outpath)
             return compute_hashes(fasta_file, write_cache=False)
         else:
             fasta_file = download_from_ENA_FTP(accession, outpath)
+            if fasta_file is None:
+                raise ValueError("Empty URL or download failure for 'generated_ftp'")
             return compute_hashes(fasta_file, write_cache=False)
 
     except requests.HTTPError as e:
@@ -268,6 +274,9 @@ def handle_fasta_processing(accession, download_folder):
 @retry(tries=5, delay=15, backoff=1.5) 
 def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
     url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
+    if not url:
+        logging.warning(f"URL is empty for accession: {accession}, ftp field: {analysis_ftp_field}")
+        return None
     logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
 
     fire_endpoint = "http://hl.fire.sdo.ebi.ac.uk"
@@ -303,6 +312,9 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
 @retry(tries=8, delay=15, backoff=5) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
+    if not url:
+        logging.warning(f"URL is empty for accession: {accession}")
+        return None
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
     
     ftp_server = "ftp.ebi.ac.uk"
