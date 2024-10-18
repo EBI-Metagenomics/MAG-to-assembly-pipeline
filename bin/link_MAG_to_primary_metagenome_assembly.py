@@ -5,6 +5,7 @@ import argparse
 import csv
 import json
 import gzip
+from ftplib import FTP
 import logging
 import os
 import re
@@ -304,14 +305,14 @@ def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
     
-    if not (url.startswith('ftp://') or url.startswith('https://')):
-        url = 'https://' +  url
+    ftp_server = "ftp.ebi.ac.uk"
+    ftp_path = url.replace(ftp_server, "")
+    
+    with FTP(ftp_server) as ftp:
+        ftp.login()
+        with open(outpath, 'wb') as file:
+            ftp.retrbinary(f"RETR {ftp_path}", file.write)
 
-    response = requests.get(url)
-    response.raise_for_status()
-
-    with open(outpath, 'wb') as out:
-        out.write(response.content)
     if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
             logging.debug(f"Successful. File saved to {outpath}")
             return outpath
