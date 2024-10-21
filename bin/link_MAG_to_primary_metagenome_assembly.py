@@ -276,7 +276,7 @@ def handle_fasta_processing(accession, download_folder):
         logging.error(f"{accession} HTTP Error while downloading: {e.code} - {e.reason}")
         return None
     except Exception as e:
-        logging.error(f"{accession} Error occurred during download due to: {e}")
+        logging.error(f"{accession} Failed to process fasta file due to: {e}")
         return None
 
 

@@ -234,6 +234,9 @@ def compute_hashes(file_path, write_cache=True, delete_fasta=True, separate_cach
             hash_object = hashlib.md5(str(record.seq.upper()).encode())
             hashes.add(hash_object.hexdigest())
 
+    if not hashes:
+        raise ValueError("Fasta file does not contain any records")
+
     if write_cache:
         with open(cache_path, "w") as handle:
             for hash in hashes:
