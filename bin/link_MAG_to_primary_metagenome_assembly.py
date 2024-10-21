@@ -95,7 +95,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
             logging.debug(f"Verify retrieved assemblies using comparason of contigs' hashes")
             mag_hashes = handle_fasta_processing(acc, download_folder)
             if not mag_hashes:
-                logging.info(f"Failed to do download MAG {acc} fasta file. Skipping")
+                logging.info(f"Failed to download MAG {acc} fasta file. Skipping")
                 print(
                     acc, 
                     f"Failed to download MAG fasta file, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}",
