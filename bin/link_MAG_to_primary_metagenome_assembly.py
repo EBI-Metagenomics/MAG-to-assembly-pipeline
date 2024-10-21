@@ -284,7 +284,7 @@ def handle_fasta_processing(accession, download_folder):
 def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
     url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
     if not url:
-        logging.error(f"{accession} URL is empty for accession, ftp field: {analysis_ftp_field}")
+        logging.debug(f"{accession} URL is empty for accession, ftp field: {analysis_ftp_field}")
         return None
     logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
 
