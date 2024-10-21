@@ -9,7 +9,8 @@ process FIND_PRIMARY_ASSEMBLY {
     path "*.not_linked.tsv", emit: not_linked_mags
 
     script:
-    def cleanup_flag = ${params.cleanup} ? "--cleanup" : ""
+    def cleanup_flag = params.cleanup ? "--cleanup" : ""
+    def debug_flag = params.debug ? "--debug" : ""
     """
     
     link_MAG_to_primary_metagenome_assembly.py \
@@ -18,7 +19,8 @@ process FIND_PRIMARY_ASSEMBLY {
         -p ${accessions}.putative.not_linked.tsv \
         -f ${accessions}.failed.not_linked.tsv \
         --download-folder fastas \
-        ${cleanup_flag}
+        ${cleanup_flag} \
+        ${debug_flag} \
 
     """
 }
