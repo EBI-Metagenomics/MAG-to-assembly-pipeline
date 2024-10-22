@@ -324,7 +324,7 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
 
 
 def download_from_NCBI_datasets(accession, download_folder):
-    outpath = f'{accession}.fa'
+    outpath = os.path.join(download_folder, f'{accession}.fa')
     accession_version = accession if "." in accession else accession + ".1"
     url = f"https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/{accession_version}/download"
     query = {
@@ -349,7 +349,9 @@ def download_from_NCBI_datasets(accession, download_folder):
     if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
         logging.debug(f"Successful. File saved to {outpath}")
         return outpath
-    return None
+    logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
+    os.remove(outpath)
+    raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
 @retry(tries=8, delay=15, backoff=4, retry_on_exception=lambda e: not isinstance(e, ValueError)) 
