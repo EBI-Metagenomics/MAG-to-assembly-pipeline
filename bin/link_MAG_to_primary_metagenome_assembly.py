@@ -280,12 +280,11 @@ def handle_fasta_processing(accession, download_folder):
         return None
 
 
-@retry(tries=5, delay=15, backoff=1.5) 
+@retry(tries=5, delay=15, backoff=1.5, retry_on_exception=lambda e: not isinstance(e, ValueError)) 
 def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
     url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
     if not url:
-        logging.debug(f"{accession} URL is empty for accession, ftp field: {analysis_ftp_field}")
-        return None
+        raise ValueError(f"URL is empty, ftp field: {analysis_ftp_field}")
     logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
 
     fire_endpoint = "http://hl.fire.sdo.ebi.ac.uk"
@@ -293,10 +292,13 @@ def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str
     fire_path = url.replace("ftp.sra.ebi.ac.uk/vol1/", "")
     s3 = boto3.client("s3", endpoint_url=fire_endpoint, config=Config(signature_version=UNSIGNED))
     s3.download_file(fire_ena_bucket, fire_path, outpath)
-    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+    # 20 bytes is a size of an empty fa.gz
+    if os.path.exists(outpath) and os.path.getsize(outpath) > 20:
         logging.debug(f"Successful. File saved to {outpath}")
         return outpath
-    return None
+    logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
+    os.remove(outpath)
+    raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
 @retry(tries=8, delay=15, backoff=5) 
@@ -312,10 +314,13 @@ def download_from_ENA_API(accession: str, outpath: str) -> str:
     
     with open(outpath, 'wb') as out:
         out.write(response.content)
-    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
+    # 20 bytes is a size of an empty fa.gz
+    if os.path.exists(outpath) and os.path.getsize(outpath) > 20:
         logging.debug(f"Successful. File saved to {outpath}")
         return outpath
-    return None
+    logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
+    os.remove(outpath)
+    raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
 def download_from_NCBI_datasets(accession, download_folder):
@@ -347,12 +352,11 @@ def download_from_NCBI_datasets(accession, download_folder):
     return None
 
 
-@retry(tries=8, delay=15, backoff=5) 
+@retry(tries=8, delay=15, backoff=5, retry_on_exception=lambda e: not isinstance(e, ValueError)) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     if not url:
-        logging.warning(f"URL is empty for accession: {accession}")
-        return None
+        raise ValueError(f"URL is empty")
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
     
     ftp_server = "ftp.ebi.ac.uk"
@@ -362,11 +366,13 @@ def download_from_ENA_FTP(accession, outpath):
         ftp.login()
         with open(outpath, 'wb') as file:
             ftp.retrbinary(f"RETR {ftp_path}", file.write)
-
-    if os.path.exists(outpath) and os.path.getsize(outpath) != 0:
-            logging.debug(f"Successful. File saved to {outpath}")
-            return outpath
-    return None
+    # 20 bytes is a size of an empty fa.gz
+    if os.path.exists(outpath) and os.path.getsize(outpath) > 20:
+        logging.debug(f"Successful. File saved to {outpath}")
+        return outpath
+    logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
+    os.remove(outpath)
+    raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
 def compare_bin_and_assembly_hashes(acc, mag_hashes, assembly2metadata, download_folder, minchecksum_match):
