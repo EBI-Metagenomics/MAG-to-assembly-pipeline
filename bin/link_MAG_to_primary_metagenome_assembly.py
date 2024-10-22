@@ -253,17 +253,23 @@ def handle_fasta_processing(accession, download_folder):
             # in ENA generated_ftp or submitted_ftp (or both) fields may contain invalid links
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
+                if fasta_file is None:
+                    raise ValueError("Empty URL or empty file in 'generated_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
             except (gzip.BadGzipFile, ClientError, ParamValidationError, ValueError) as e:
                 logging.error(f"{accession} Download from link in 'generated_ftp' failed due to: {e}")
                 logging.debug(f'Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
+                if fasta_file is None:
+                    raise ValueError("Empty URL or empty file in 'submitted_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
         elif accession.startswith("GCA"):
             fasta_file = download_from_ENA_API(accession, outpath)
             return compute_hashes(fasta_file, write_cache=False)
         else:
             fasta_file = download_from_ENA_FTP(accession, outpath)
+            if fasta_file is None:
+                raise ValueError("Empty URL or empty file'")
             return compute_hashes(fasta_file, write_cache=False)
 
     except requests.HTTPError as e:
@@ -274,11 +280,13 @@ def handle_fasta_processing(accession, download_folder):
         return None
 
 
-@retry(tries=5, delay=15, backoff=1.5, retry_on_exception=lambda e: not isinstance(e, ValueError)) 
+@retry(tries=5, delay=15, backoff=1.5) 
 def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str) -> str:
     url = get_fasta_url(accession, analysis_ftp_field=analysis_ftp_field)
     if not url:
-        raise ValueError(f"URL is empty, ftp field: {analysis_ftp_field}")
+        logging.debug(f"{accession} URL is empty for accession, ftp field: {analysis_ftp_field}")
+        return None
+        # raise ValueError(f"URL is empty, ftp field: {analysis_ftp_field}")
     logging.debug(f"Download {accession} from ENA FIRE using URL {url}")
 
     fire_endpoint = "http://hl.fire.sdo.ebi.ac.uk"
@@ -292,7 +300,8 @@ def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str
         return outpath
     logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
     os.remove(outpath)
-    raise ValueError(f"Downloaded file {outpath} has zero size")
+    return None
+    # raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
 @retry(tries=8, delay=15, backoff=4) 
@@ -348,11 +357,13 @@ def download_from_NCBI_datasets(accession, download_folder):
     raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
-@retry(tries=8, delay=15, backoff=4, retry_on_exception=lambda e: not isinstance(e, ValueError)) 
+@retry(tries=8, delay=15, backoff=4) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     if not url:
-        raise ValueError(f"URL is empty")
+        logging.debug(f"{accession} URL is empty for accession")
+        return None
+        # raise ValueError(f"URL is empty")
     logging.debug(f"Download {accession} from ENA FTP using URL {url}")
     
     ftp_server = "ftp.ebi.ac.uk"
@@ -368,7 +379,8 @@ def download_from_ENA_FTP(accession, outpath):
         return outpath
     logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
     os.remove(outpath)
-    raise ValueError(f"Downloaded file {outpath} has zero size")
+    return None
+    # raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
 def compare_bin_and_assembly_hashes(acc, mag_hashes, assembly2metadata, download_folder, minchecksum_match):
