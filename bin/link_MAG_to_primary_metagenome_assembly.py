@@ -253,23 +253,17 @@ def handle_fasta_processing(accession, download_folder):
             # in ENA generated_ftp or submitted_ftp (or both) fields may contain invalid links
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
-                if fasta_file is None:
-                    raise ValueError("Empty URL or empty file in 'generated_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
             except (gzip.BadGzipFile, ClientError, ParamValidationError, ValueError) as e:
                 logging.error(f"{accession} Download from link in 'generated_ftp' failed due to: {e}")
                 logging.debug(f'Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
-                if fasta_file is None:
-                    raise ValueError("Empty URL or empty file in 'submitted_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
         elif accession.startswith("GCA"):
             fasta_file = download_from_ENA_API(accession, outpath)
             return compute_hashes(fasta_file, write_cache=False)
         else:
             fasta_file = download_from_ENA_FTP(accession, outpath)
-            if fasta_file is None:
-                raise ValueError("Empty URL or empty file'")
             return compute_hashes(fasta_file, write_cache=False)
 
     except requests.HTTPError as e:
