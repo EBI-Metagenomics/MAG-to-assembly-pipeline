@@ -304,7 +304,7 @@ def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: str
     # raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
-@retry(tries=8, delay=15, backoff=4) 
+@retry(tries=7, delay=15, backoff=2) 
 def download_from_ENA_API(accession: str, outpath: str) -> str:
     api_endpoint = f"https://www.ebi.ac.uk/ena/browser/api/fasta/{accession}"
     logging.debug(f"Download {accession} from ENA API using URL {api_endpoint}")
