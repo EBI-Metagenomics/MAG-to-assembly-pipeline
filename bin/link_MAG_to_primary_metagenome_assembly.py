@@ -357,7 +357,7 @@ def download_from_NCBI_datasets(accession, download_folder):
     raise ValueError(f"Downloaded file {outpath} has zero size")
 
 
-@retry(tries=8, delay=15, backoff=4) 
+@retry(tries=8, delay=10, backoff=3) 
 def download_from_ENA_FTP(accession, outpath):
     url = get_fasta_url(accession)
     if not url:
