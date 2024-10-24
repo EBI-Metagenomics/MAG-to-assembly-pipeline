@@ -102,7 +102,6 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                     sep="\t", file=out_fails
                 )
                 continue
-            # continue
             logging.debug(f"MAG/bin hashes were computed")
             logging.debug(f"Start comparing MAG hashes to every primary assembly")
             confirmed_assemblies, putative_assemblies = compare_bin_and_assembly_hashes(acc, mag_hashes, primary_assemblies_dict, download_folder, minchecksum_match)
