@@ -4,7 +4,8 @@
             {
                 "0": [
                     "portion.1.links.tsv:md5,7fe78c6e1fa3fb43751142bf93f92c3b",
-                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994"
+                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994",
+                    "portion.3.links.tsv:md5,07ea0a41c3c728bf426220084870d0b2"
                 ],
                 "1": [
                     [
@@ -12,13 +13,18 @@
                         "portion.1.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                     ],
                     [
-                        "portion.2.failed.not_linked.tsv:md5,7cf3bc7703fe76e435100dbac329fdf0",
+                        "portion.2.failed.not_linked.tsv:md5,63b699576f034fc1a52f2e6152ad9e15",
                         "portion.2.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        "portion.3.failed.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e",
+                        "portion.3.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                     ]
                 ],
                 "mag_assembly_pairs": [
                     "portion.1.links.tsv:md5,7fe78c6e1fa3fb43751142bf93f92c3b",
-                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994"
+                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994",
+                    "portion.3.links.tsv:md5,07ea0a41c3c728bf426220084870d0b2"
                 ],
                 "not_linked_mags": [
                     [
@@ -26,16 +32,20 @@
                         "portion.1.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                     ],
                     [
-                        "portion.2.failed.not_linked.tsv:md5,7cf3bc7703fe76e435100dbac329fdf0",
+                        "portion.2.failed.not_linked.tsv:md5,63b699576f034fc1a52f2e6152ad9e15",
                         "portion.2.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        "portion.3.failed.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e",
+                        "portion.3.putative.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                     ]
                 ]
             }
         ],
         "meta": {
             "nf-test": "0.9.0",
-            "nextflow": "23.04.3"
+            "nextflow": "24.04.4"
         },
-        "timestamp": "2024-08-15T14:52:20.533170631"
+        "timestamp": "2024-10-24T16:59:47.889706"
     }
 }
