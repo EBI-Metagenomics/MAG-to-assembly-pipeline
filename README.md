@@ -6,7 +6,7 @@ The pipeline consists of three consecutive processes:
 
 1. **Creation of Input for the Main Script**
 
-   Download lists of accessions from MGnify catalogs and ENA, merge them, remove redundancy, and exclude accessions that have been processed in previous runs of the pipeline. This step is skipped if runnning on user-provided input accessions.
+   Download lists of accessions from MGnify catalogs and ENA, merge them, remove redundancy, and exclude accessions that have been processed in previous runs of the pipeline. This step is skipped if running on user-provided input accessions.
 
 2. **MAG-to-Assembly Linking**
 
@@ -36,7 +36,7 @@ __If these arguments are not specified, the pipeline will run inference of MAG-t
 
 - `--external_input`: Custom list of accessions (one per line) to process instead of ones that are downloaded from ENA/MGnify
 - `--external_metadata`: Optional. Metadata table connecting input accession with their MGYG accessions and species representatives to include this information in the final table
-- `--previous_table`: Optional. Earlier `mag_to_assembly_links_*.tsv` file to . An example is [`data/tests/mag_to_assembly_links.tsv`](data/tests/mag_to_assembly_links.tsv)
+- `--previous_table`: Optional. Earlier `mag_to_assembly_links_*.tsv` file. If provied, previously identified MAG-assembly pairs are included into the produced output. An example is [`data/tests/mag_to_assembly_links.tsv`](data/tests/mag_to_assembly_links.tsv)
 - `--processed_acc`: Optional. List of the accessions `processed_accessions_*.tsv` that have been processed in previous runs of the pipeline. An example is [`data/tests/processed_accessions.tsv`](`data/tests/processed_accessions.tsv`)
 
 ## Usage
