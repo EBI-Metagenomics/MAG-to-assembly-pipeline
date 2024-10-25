@@ -50,7 +50,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
 
             logging.debug(f"Start processing of MAG/bin with accession {acc}")
 
-            logging.debug(f"Query ENA portal to get bin sample accession corresponding to the MAG/bin {acc}")
+            logging.debug(f"Query ENA API to get bin sample accession corresponding to the MAG/bin {acc}")
             bin_sample = find_bin_sample_in_ena(acc)
             if not bin_sample:
                 logging.info(f"{acc} Unable to find sample accession. Skipping")
@@ -58,7 +58,7 @@ def main(infile, outfile_confirmed, outfile_putative, outfile_fails, download_fo
                 continue
             logging.debug(f"Successful. MAG/bin {acc} sample accession is {bin_sample}")
         
-            logging.debug(f"Use ENA portal to find root sample accession and run accessions corresponding to the MAG/bin {acc}")
+            logging.debug(f"Use ENA API to find root sample accession and run accessions corresponding to the MAG/bin {acc}")
             derived_from, derived_from_samples, derived_from_runs = find_root_sample_and_run_in_ena(bin_sample)
             if not derived_from:
                 print(acc, f"unable to load XML or 'derived from' field does not exist in XML, MAG sample {bin_sample}", sep="\t", file=out_fails)
