@@ -1,5 +1,5 @@
 process FIND_PRIMARY_ASSEMBLY {
-    label "python_based"
+    container 'quay.io/microbiome-informatics/mag-assembly-linking'
     
     input:
     path accessions
