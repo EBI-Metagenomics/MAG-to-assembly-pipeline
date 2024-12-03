@@ -1,5 +1,6 @@
 process DOWNLOAD_INPUT {
     container 'quay.io/microbiome-informatics/mag-assembly-linking'
+    label 'process_single'
     
     input:
     path processed_acc
