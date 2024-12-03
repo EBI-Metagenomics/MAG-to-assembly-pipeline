@@ -6,8 +6,6 @@ import datetime
 from pathlib import Path
 import pandas as pd
 
-# TODO add processing of failed and putative files
-# TODO add merge with previous retrofit 
 
 def main(results, catalogue_metadata, previous_table):
     df_list = []
