@@ -1,7 +1,7 @@
 process FINALISE_OUTPUT {
-    container 'quay.io/microbiome-informatics/mag-assembly-linking'
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.0'
     label 'process_single'
-    
+
     input:
     path linked_tsv
     path not_linked_tsv

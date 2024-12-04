@@ -1,5 +1,5 @@
 process FIND_PRIMARY_ASSEMBLY {
-    container 'quay.io/microbiome-informatics/mag-assembly-linking'
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.0'
     
     input:
     path accessions
