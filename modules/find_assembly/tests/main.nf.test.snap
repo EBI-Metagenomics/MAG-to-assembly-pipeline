@@ -4,7 +4,7 @@
             {
                 "0": [
                     "portion.1.links.tsv:md5,7fe78c6e1fa3fb43751142bf93f92c3b",
-                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994",
+                    "portion.2.links.tsv:md5,5dfba2db3f2054aabf6bb821b5980107",
                     "portion.3.links.tsv:md5,07ea0a41c3c728bf426220084870d0b2"
                 ],
                 "1": [
@@ -23,7 +23,7 @@
                 ],
                 "mag_assembly_pairs": [
                     "portion.1.links.tsv:md5,7fe78c6e1fa3fb43751142bf93f92c3b",
-                    "portion.2.links.tsv:md5,a36c984839f0d228135335852300e994",
+                    "portion.2.links.tsv:md5,5dfba2db3f2054aabf6bb821b5980107",
                     "portion.3.links.tsv:md5,07ea0a41c3c728bf426220084870d0b2"
                 ],
                 "not_linked_mags": [
@@ -44,8 +44,8 @@
         ],
         "meta": {
             "nf-test": "0.9.0",
-            "nextflow": "24.04.4"
+            "nextflow": "24.10.0"
         },
-        "timestamp": "2024-10-24T16:59:47.889706"
+        "timestamp": "2024-12-05T15:04:12.512548"
     }
 }
