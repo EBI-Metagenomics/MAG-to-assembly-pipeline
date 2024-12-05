@@ -16,10 +16,10 @@ process DOWNLOAD_INPUT {
     script:
     def processed_accession = processed_acc ? "--processed-acc ${processed_acc}" : ""
     """
-    download_genome_accessions.py \
-        $processed_accession \
-        --output-accessions ${input_accessions} \
-        --gut-mapping ${gut_mapping} \
+    download_genome_accessions.py \\
+        $processed_accession \\
+        --output-accessions ${input_accessions} \\
+        --gut-mapping ${gut_mapping} \\
         --catalogue-metadata ${catalogue_metadata}
     """
 }
