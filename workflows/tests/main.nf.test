@@ -20,11 +20,12 @@ nextflow_workflow {
 
                     // user input args
                     portion_size          = 2
-                    previous_table        = "${projectDir}/data/tests/mag_to_assembly_links.tsv"
-                    processed_acc         = "${projectDir}/data/tests/processed_accessions.tsv"
-                    external_input        = "${projectDir}/data/tests/input_accessions.tsv"
-                    external_metadata     = "${projectDir}/data/tests/all_catalog_metadata.tsv"
+                    previous_table        = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
+                    processed_acc         = "${moduleDir}/tests/data/processed_accessions.tsv"
+                    external_input        = "${moduleDir}/tests/data/input_accessions.tsv"
+                    external_metadata     = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
                     output_path           = "${outputDir}"
+                    debug                 = true
             }
         }
 
@@ -37,14 +38,14 @@ nextflow_workflow {
                 // check that line from previous table is present
                 assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add')
                 // check that new lines from current run are added
-                assert path(get(0)).readLines().contains('ERZ1694383	GCA_905170305	MGYG000483880	MGYG000455982	add')
+                assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098	add')
                 assert path(get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add')
             }
             with(workflow.out.processed_accessions_ch) {
                 // check that accessions from current run are added to the list of processed accessions
                 assert path(get(0)).readLines().contains('ERZ1022847')
                 assert path(get(0)).readLines().contains('ERZ1462793')
-                assert path(get(0)).readLines().contains('GCA_905170305')
+                assert path(get(0)).readLines().contains('GCA_938030915')
                 assert path(get(0)).readLines().contains('RSAC01')
             }   
         }

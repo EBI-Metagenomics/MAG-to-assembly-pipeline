@@ -1,5 +1,5 @@
 process FIND_PRIMARY_ASSEMBLY {
-    label "python_based"
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
     
     input:
     path accessions
@@ -9,15 +9,16 @@ process FIND_PRIMARY_ASSEMBLY {
     path "*.not_linked.tsv", emit: not_linked_mags
 
     script:
+    def cleanup_flag = params.cleanup ? "--cleanup" : ""
+    def debug_flag = params.debug ? "--debug" : ""
     """
-    
-    link_MAG_to_primary_metagenome_assembly.py \
-        -i ${accessions} \
-        -o ${accessions}.links.tsv \
-        -p ${accessions}.putative.not_linked.tsv \
-        -f ${accessions}.failed.not_linked.tsv \
-        --download-folder fastas \
-        --cleanup
-
+    link_MAG_to_primary_metagenome_assembly.py \\
+        -i ${accessions} \\
+        -o ${accessions}.links.tsv \\
+        -p ${accessions}.putative.not_linked.tsv \\
+        -f ${accessions}.failed.not_linked.tsv \\
+        --download-folder fastas \\
+        ${cleanup_flag} \\
+        ${debug_flag} 
     """
 }

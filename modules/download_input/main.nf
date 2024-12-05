@@ -1,6 +1,7 @@
 process DOWNLOAD_INPUT {
-    label "python_based"
-    
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+    label 'process_single'
+
     input:
     path processed_acc
     val input_accessions
@@ -15,10 +16,10 @@ process DOWNLOAD_INPUT {
     script:
     def processed_accession = processed_acc ? "--processed-acc ${processed_acc}" : ""
     """
-    download_genome_accessions.py \
-        $processed_accession \
-        --output-accessions ${input_accessions} \
-        --gut-mapping ${gut_mapping} \
+    download_genome_accessions.py \\
+        $processed_accession \\
+        --output-accessions ${input_accessions} \\
+        --gut-mapping ${gut_mapping} \\
         --catalogue-metadata ${catalogue_metadata}
     """
 }

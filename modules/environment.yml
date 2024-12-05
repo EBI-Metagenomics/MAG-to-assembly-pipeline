@@ -1,12 +1,14 @@
 name: linking_nf
 channels:
   - conda-forge
-  - defaults
+  - bioconda
 dependencies:
-  - python=3.9
+  - python=3.10
   - requests
   - xmltodict
   - tqdm
   - retry
   - biopython
   - pandas
+  - boto3
+  - botocore

@@ -1,6 +1,7 @@
 process FINALISE_OUTPUT {
-    label "python_based"
-    
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+    label 'process_single'
+
     input:
     path linked_tsv
     path not_linked_tsv
@@ -18,13 +19,11 @@ process FINALISE_OUTPUT {
     def previous_linking_table = previous_table ? "--previous-table previous_table.tsv" : ""
     def metadata_file = catalogue_metadata ? "--catalogue-metadata ${catalogue_metadata}" : ""
     """
-
     cat ${linked_tsv} ${not_linked_tsv} ${processed_accessions} | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
 
-    finalise_output.py \
-        ${previous_linking_table} \
-        ${metadata_file}  \
+    finalise_output.py \\
+        ${previous_linking_table} \\
+        ${metadata_file}  \\
         ${linked_tsv}
-
     """
 }
