@@ -14,7 +14,7 @@ nextflow_workflow {
                     // required files
                     gut_mapping           = "${projectDir}/data/known_and_found_gut_genomes.tsv"
 
-                    // names for generated intermidiate files 
+                    // names for generated intermidiate files
                     input_accessions      = 'input_accessions.tsv'
                     catalogue_metadata    = 'all_catalog_metadata.tsv'
 
@@ -47,7 +47,7 @@ nextflow_workflow {
                 assert path(get(0)).readLines().contains('ERZ1462793')
                 assert path(get(0)).readLines().contains('GCA_938030915')
                 assert path(get(0)).readLines().contains('RSAC01')
-            }   
+            }
         }
     }
 }

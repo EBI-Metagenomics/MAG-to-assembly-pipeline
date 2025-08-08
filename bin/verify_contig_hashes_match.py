@@ -8,7 +8,11 @@ import shutil
 import requests
 from Bio import SeqIO
 from botocore.exceptions import ClientError, ParamValidationError
-from download_fasta_utils import download_from_ENA_API, download_from_ENA_FIRE, download_from_ENA_FTP
+from download_fasta_utils import (
+    download_from_ENA_API,
+    download_from_ENA_FIRE,
+    download_from_ENA_FTP,
+)
 
 
 def main(input_file, download_folder, cleanup, out_confirmed, out_putative, out_fails):
@@ -30,14 +34,22 @@ def main(input_file, download_folder, cleanup, out_confirmed, out_putative, out_
         for assembly in assemblies:
             assembly_hashes = handle_fasta_processing(assembly, download_folder)
             if not assembly_hashes:
-                logging.info(f"For the MAG {bin} failed to download primary assembly {assembly} fasta file.")
+                logging.info(
+                    f"For the MAG {bin} failed to download primary assembly {assembly} fasta file."
+                )
                 continue
             logging.debug("Assembly hashes were computed")
-            if mag_hashes.issubset(assembly_hashes):  # TODO modify to avoid matching empty file hashes
-                logging.debug(f"Assembly {assembly} is confirmed to be primary assembly for the MAG/bin {bin}")
+            if mag_hashes.issubset(
+                assembly_hashes
+            ):  # TODO modify to avoid matching empty file hashes
+                logging.debug(
+                    f"Assembly {assembly} is confirmed to be primary assembly for the MAG/bin {bin}"
+                )
                 confirmed_assemblies.append(assembly)
             else:
-                logging.debug(f"Assembly {assembly} is not a primary assembly for the MAG/bin {bin}")
+                logging.debug(
+                    f"Assembly {assembly} is not a primary assembly for the MAG/bin {bin}"
+                )
                 not_confirmed_assemblies.append(assembly)
         logging.debug("Comparason finished")
 
@@ -58,7 +70,9 @@ def handle_fasta_processing(accession, download_folder):
     try:
         outpath = os.path.join(download_folder, f"{accession}.fa.gz")
         cache_path = os.path.join(download_folder, f"{accession}.fa.hash")
-        if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or (os.path.exists(cache_path) and os.path.getsize(cache_path) != 0):
+        if (os.path.exists(outpath) and os.path.getsize(outpath) != 0) or (
+            os.path.exists(cache_path) and os.path.getsize(cache_path) != 0
+        ):
             return compute_hashes(outpath, write_cache=False)
 
         if not os.path.exists(download_folder):
@@ -73,7 +87,9 @@ def handle_fasta_processing(accession, download_folder):
                     raise ValueError("Empty URL or empty file in 'generated_ftp'")
                 return compute_hashes(fasta_file, write_cache=True)
             except (gzip.BadGzipFile, ClientError, ParamValidationError, ValueError) as e:
-                logging.error(f"{accession} Download from link in 'generated_ftp' failed due to: {e}")
+                logging.error(
+                    f"{accession} Download from link in 'generated_ftp' failed due to: {e}"
+                )
                 logging.debug('Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
                 if fasta_file is None:

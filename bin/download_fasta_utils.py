@@ -133,7 +133,9 @@ def download_from_NCBI_datasets(accession, download_folder):
     shutil.unpack_archive(tmp_archive_path, tmp_path)
     subdir_path = os.path.join(download_folder, f"ncbi_tmp/ncbi_dataset/data/{accession_version}/")
     source_file = [file for file in os.listdir(subdir_path) if file.endswith("_genomic.fna")]
-    source_path = os.path.join(subdir_path, source_file[0])  # assembly_file is a list with one element
+    source_path = os.path.join(
+        subdir_path, source_file[0]
+    )  # assembly_file is a list with one element
     shutil.move(source_path, outpath)
     os.remove(tmp_archive_path)
     shutil.rmtree(tmp_path)
