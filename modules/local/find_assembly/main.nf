@@ -1,6 +1,6 @@
 process FIND_PRIMARY_ASSEMBLY {
     container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
-    
+
     input:
     path accessions
 
@@ -19,6 +19,6 @@ process FIND_PRIMARY_ASSEMBLY {
         -f ${accessions}.failed.not_linked.tsv \\
         --download-folder fastas \\
         ${cleanup_flag} \\
-        ${debug_flag} 
+        ${debug_flag}
     """
 }

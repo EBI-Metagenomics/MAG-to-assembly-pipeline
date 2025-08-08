@@ -8,7 +8,7 @@ nextflow_process {
 
         when {
             params {
-                portion_size = 2 
+                portion_size = 2
             }
             process {
                 """
