@@ -1,0 +1,69 @@
+{
+    "Find assemblies for the test list of accessions": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "batch.1"
+                        },
+                        "batch.1.validated.tsv:md5,3c4216ffbbc00239081e47cb1d61e9a5"
+                    ],
+                    [
+                        {
+                            "id": "batch.2"
+                        },
+                        "batch.2.validated.tsv:md5,2b3f4f88b4d8aaa0c9da79eafab98a9a"
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "batch.1"
+                        },
+                        "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        {
+                            "id": "batch.2"
+                        },
+                        "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "error_log": [
+                    [
+                        {
+                            "id": "batch.1"
+                        },
+                        "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        {
+                            "id": "batch.2"
+                        },
+                        "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "validated_mag_assembly_pairs": [
+                    [
+                        {
+                            "id": "batch.1"
+                        },
+                        "batch.1.validated.tsv:md5,3c4216ffbbc00239081e47cb1d61e9a5"
+                    ],
+                    [
+                        {
+                            "id": "batch.2"
+                        },
+                        "batch.2.validated.tsv:md5,2b3f4f88b4d8aaa0c9da79eafab98a9a"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.0",
+            "nextflow": "25.04.1"
+        },
+        "timestamp": "2025-08-19T11:01:21.53753"
+    }
+}
