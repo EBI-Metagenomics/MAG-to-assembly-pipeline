@@ -1,4 +1,4 @@
-process FINALISE_OUTPUT {
+process FORMAT_OUTPUT_RESULTS {
     container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
     label 'process_single'
 

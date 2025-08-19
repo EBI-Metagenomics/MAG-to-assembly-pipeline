@@ -1,4 +1,4 @@
-process DOWNLOAD_INPUT_BINS_AND_MAGS {
+process COLLECT_INPUT_ACCESSIONS {
     container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
     label 'process_single'
 

@@ -1,8 +1,8 @@
 nextflow_process {
 
-    name "Test Process FINALISE_OUTPUT"
+    name "Test Process FORMAT_OUTPUT_RESULTS"
     script "../main.nf"
-    process "FINALISE_OUTPUT"
+    process "FORMAT_OUTPUT_RESULTS"
 
     test("Output files preparation") {
 
