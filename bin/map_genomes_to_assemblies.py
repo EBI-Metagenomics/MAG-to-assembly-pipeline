@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding=utf-8
 
 import argparse
@@ -37,58 +37,77 @@ def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
         logging.getLogger(noisy_lib).setLevel(logging.WARNING)
 
 
-def main(infile, outfile):
-    err_lines = []
-    out_lines = []
-    with open(infile, "r") as file_in:
-        for genome_accession in tqdm(file_in.readlines()):
-            genome_accession = genome_accession.strip()
+def main(input_file, output_file, errors_file):
+    output_lines = []
+    error_lines = []
+    with open(input_file, "r") as file_in:
+        reader = csv.reader(file_in)
+        for row in tqdm(reader):
+            genome_accession = row[0].strip()
             if genome_accession[:3] not in ["ERZ", "GCA"]:
                 genome_accession = genome_accession.rstrip("0")  # CAMPAA010000000 -> CAMPAA01
 
-            logging.debug(f"Start processing of MAG/bin with accession {genome_accession}")
+            logging.debug(f"Start processing of genome {genome_accession}")
 
             logging.debug(
-                f"Query ENA API to get bin sample accession corresponding to the MAG/bin {genome_accession}"
+                f"Query ENA API to get sample accession corresponding to the genome {genome_accession}"
             )
-            bin_sample = find_bin_sample_in_ena(genome_accession)
-            if not bin_sample:
-                logging.info(f"{genome_accession} Unable to find bin sample accession. Skipping")
-                err_lines.append(f"{genome_accession}\tunable to find sample accession")
+            genome_sample = find_genome_sample_in_ena(genome_accession)
+            if not genome_sample:
+                logging.info(
+                    f"Unable to find sample accession for the genome {genome_accession}. Skipping"
+                )
+                error_lines.append(
+                    [
+                        genome_accession,
+                        "unable to find sample accession corresponding to the genome",
+                    ]
+                )
                 continue
             logging.debug(
-                f"Successful. MAG/bin {genome_accession} sample accession is {bin_sample}"
+                f"Successful. Genome {genome_accession} sample accession is {genome_sample}"
             )
 
             logging.debug(
-                f"Use ENA API to find root sample accession and run accessions corresponding to the MAG/bin {genome_accession}"
+                f"Use ENA API to find 'derived from' sample and run accessions corresponding to the genome {genome_accession}"
             )
             derived_from, derived_from_samples, derived_from_runs = find_root_sample_and_run_in_ena(
-                bin_sample
+                genome_sample
             )
             if not derived_from:
-                err_lines.append(
-                    f"{genome_accession}\tunable to load XML or 'derived from' field does not exist in XML, MAG sample {bin_sample}"
+                error_lines.append(
+                    [
+                        genome_accession,
+                        f"unable to load XML or 'derived from' field does not exist in XML of genome sample {genome_sample}",
+                    ]
                 )
                 continue
             if not derived_from_samples:
-                err_lines.append(
-                    f"{genome_accession}\tunable to find 'derived from' sample from run metadata for {bin_sample}"
+                error_lines.append(
+                    [
+                        genome_accession,
+                        f"unable to find 'derived from' sample from run metadata for {genome_sample}",
+                    ]
                 )
                 continue
             if not derived_from_runs:
                 logging.debug(
-                    f"No bin's runs. Comparson of run accessions for the MAG/bin {genome_accession} and primary assemblies will be skipped"
+                    f"Runs for the genome {genome_accession} were not found. Comparson of run accessions for the genome and primary assemblies will be skipped"
                 )
 
             logging.debug(
-                f"Find all primary metagenomic assemblies linked to the root sample {','.join(derived_from_samples)}"
+                f"Find all primary metagenomic assemblies linked to the samples {','.join(derived_from_samples)}"
             )
-            primary_assemblies = get_primary_assemblies_from_sample(derived_from_samples)
+            primary_assemblies, assembly2runs = get_primary_assemblies_from_sample(
+                derived_from_samples
+            )
             if not primary_assemblies:  # cases when primary assembly was not uploaded to ENA
-                logging.debug("There are no assemblies for the given root sample")
-                err_lines.append(
-                    f"{genome_accession}\tthere are no assemblies for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}"
+                logging.debug("There are no assemblies for the given Biosample")
+                error_lines.append(
+                    [
+                        genome_accession,
+                        f"there are no assemblies for genome sample: {genome_sample}, 'derived from' samples: {','.join(derived_from_samples)}",
+                    ]
                 )
                 continue
             logging.debug(
@@ -97,101 +116,113 @@ def main(infile, outfile):
 
             if len(primary_assemblies) > 1 and derived_from_runs:
                 logging.debug(
-                    "Attempt to decrease list of assemblies by filtering assemblies derived from the runs other than MAG runs"
+                    "Attempt to decrease the list of assemblies by filtering assemblies "
+                    "generated from the runs other than genome's runs"
                 )
-                try:
-                    primary_assemblies = decrease_number_of_assemblies(
-                        primary_assemblies, derived_from_runs
-                    )
-                except Exception as error:  # TODO improve this error handling
-                    logging.debug(
-                        f"Unable to decrease number of assemblies for MAG {genome_accession}, sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}"
-                    )
-                    logging.debug(f"Due to {str(error)}")
+                for assembly, run in assembly2runs.items():
+                    if run and {run} != set(derived_from_runs):
+                        primary_assemblies.remove(assembly)
                 if not primary_assemblies:
                     logging.info(
                         "All found primary assemblies were discarded during run comparason. Skipping"
                     )
-                    err_lines.append(
-                        f"{genome_accession}\tthere are no assemblies with similar runs for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}"
+                    error_lines.append(
+                        [
+                            genome_accession,
+                            f"there are no assemblies with similar runs for genome sample {genome_sample}, 'derived from' samples {','.join(derived_from_samples)}",
+                        ]
                     )
                     continue
                 logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies)}")
 
             if primary_assemblies:
-                logging.debug("Write list of assemblies to the output file")
-                out_lines.append(f"{genome_accession}\t{','.join(primary_assemblies)}")
+                output_lines.append([genome_accession, ",".join(primary_assemblies)])
             else:
                 logging.debug(f"No primary assemblies found for {genome_accession}")
-                err_lines.append(
-                    f"{genome_accession}\tno primary assemblies found for sample id: {bin_sample}, derived samples: {','.join(derived_from_samples)}"
+                error_lines.append(
+                    [
+                        genome_accession,
+                        f"no primary assemblies found for genome sample {genome_sample}, 'derived from' samples {','.join(derived_from_samples)}",
+                    ]
                 )
 
+    logging.debug("Write list of assemblies to the output file")
+    with open(output_file, "w") as file_out:
+        writer = csv.writer(file_out, delimiter="\t")
+        for line in output_lines:
+            writer.writerow(line)
 
-def find_bin_sample_in_ena(genome_accession):
+    logging.debug("Write errors to the error file")
+    with open(errors_file, "w") as file_out:
+        writer = csv.writer(file_out, delimiter="\t")
+        for line in error_lines:
+            writer.writerow(line)
+
+
+def find_genome_sample_in_ena(genome_accession):
     try:
-        if genome_accession.startswith("ERZ"):
+        if genome_accession[:3] in ["ERZ", "GCA"]:
             logging.debug(
-                f"{genome_accession} is an ENA analysis accession, retrieving metadata in XML from ENA portal"
+                f"{genome_accession} is an ENA analysis or genome accession, retrieving metadata in XML from ENA portal"
             )
-            mag_ena_data = load_data(genome_accession, type="xml")
-            return mag_ena_data["ANALYSIS_SET"]["ANALYSIS"]["SAMPLE_REF"]["IDENTIFIERS"][
-                "PRIMARY_ID"
-            ]
-        elif genome_accession.startswith("GCA"):
-            logging.debug(
-                f"{genome_accession} is a NCBI genome accession, retrieving metadata in XML from ENA portal"
-            )
-            mag_ena_data = load_data(genome_accession, type="xml")
-            return mag_ena_data["ASSEMBLY_SET"]["ASSEMBLY"]["SAMPLE_REF"]["IDENTIFIERS"][
-                "PRIMARY_ID"
-            ]
+            genome_ena_data = load_data(genome_accession, type="xml")
+            accession_type = "ANALYSIS" if genome_accession.startswith("ERZ") else "ASSEMBLY"
+            return genome_ena_data[f"{accession_type}_SET"][f"{accession_type}"]["SAMPLE_REF"][
+                "IDENTIFIERS"
+            ]["PRIMARY_ID"]
         else:
             logging.debug(
                 f"{genome_accession} is an ENA WGS set accession, retrieving summary from ENA portal"
             )
-            mag_ena_data = load_data(genome_accession, type="summary")
-            return mag_ena_data["summaries"][0]["sample"]
+            genome_ena_data = load_data(genome_accession, type="summary")
+            return genome_ena_data["summaries"][0]["sample"]
     except Exception as e:
         logging.debug(f"Failed to fetch sample accession for {genome_accession} due to {e}")
         return None
 
 
-def find_root_sample_and_run_in_ena(bin_sample):
+def find_root_sample_and_run_in_ena(genome_sample):
     try:
-        logging.debug(f"Retrieving metadata in XML for accession {bin_sample} from ENA portal")
-        sample_ena_data = load_data(bin_sample, type="xml")
+        logging.debug(f"Retrieving metadata in XML for accession {genome_sample} from ENA portal")
+        sample_ena_data = load_data(genome_sample, type="xml")
         sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"][
             "SAMPLE_ATTRIBUTE"
         ]
         logging.debug("Parsing sample attributes in XML metadata")
         derived_from_samples, derived_from_runs = parse_derived_from_attribute(sample_attributes)
-        assert derived_from_runs or derived_from_samples, "No 'derived from' attribute"
-    except AssertionError as e:
-        logging.debug(f"Unable to parse sample XML attributes for {bin_sample} due to: {e}")
-        return None, None, None
+        if not derived_from_runs and not derived_from_samples:
+            logging.debug(f"No 'derived from' attribute in XML of {genome_sample}")
+            return None, None, None
     except Exception as e:
         logging.info(
-            f"Unable to get bin sample XML or parse its attributes for {bin_sample} due to: {e}"
+            f"Unable to get genome sample XML or parse its attributes for {genome_sample} due to: {e}"
         )
         return None, None, None
 
     derived_from = derived_from_samples if derived_from_samples else derived_from_runs
     logging.debug(
-        f"genome_accessionording to the metadata bin sample was derived from {','.join(derived_from)}"
+        f"According to the metadata genome sample {genome_sample} was derived from {','.join(derived_from)}"
     )
 
+    # TODO this is hacky, consider removing it
     # if 'derived from' field does not contain any run id(s), look for them in the "description" field
     if not derived_from_runs:
-        logging.debug("Look for runs accessions in the bin sample metadata <DESCRIPTION> field")
+        logging.debug("Look for runs accessions in the bin sample metadata <DESCRIPTION> fiesld")
         try:
             description = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["DESCRIPTION"]
             derived_from_runs = get_run_ids_from_description(description)
-            assert derived_from_runs
-            logging.debug(f"The following run accessions were found: {','.join(derived_from_runs)}")
-            return derived_from, derived_from_samples, derived_from_runs
+            if derived_from_runs:
+                logging.debug(
+                    f"The following run accessions were found: {','.join(derived_from_runs)}"
+                )
+                return derived_from, derived_from_samples, derived_from_runs
+            else:
+                logging.debug(
+                    f"Description field of {genome_sample} does not contain any run accessions"
+                )
+                return derived_from, derived_from_samples, None
         except Exception:
-            logging.debug(f"Failed to identify run accessions for bin sample {bin_sample}")
+            logging.debug(f"Failed to identify run accessions for bin sample {genome_sample}")
             return derived_from, derived_from_samples, None
 
     # if "derived from" field does not contain any related sample id(s), look for them in the run(s) metadata using ENA API
@@ -199,13 +230,18 @@ def find_root_sample_and_run_in_ena(bin_sample):
         logging.debug("Root sample will be identified through run accession(s)")
         try:
             derived_from_samples = get_samples_from_runs(derived_from_runs)
-            assert derived_from_samples
-            logging.debug(
-                f"The following sample accessions were found: {','.join(derived_from_samples)}"
-            )
-            return derived_from, derived_from_samples, derived_from_runs
+            if derived_from_samples:
+                logging.debug(
+                    f"The following sample accessions were found: {','.join(derived_from_samples)}"
+                )
+                return derived_from, derived_from_samples, derived_from_runs
+            else:
+                logging.debug(
+                    f"No sample accessions found for run(s) {','.join(derived_from_runs)}"
+                )
+                return derived_from, None, derived_from_runs
         except Exception:
-            logging.debug(f"unable to find root sample from run accession for {bin_sample}")
+            logging.debug(f"unable to find root sample from run accession for {genome_sample}")
             return derived_from, None, derived_from_runs
 
     return derived_from, derived_from_samples, derived_from_runs
@@ -213,6 +249,7 @@ def find_root_sample_and_run_in_ena(bin_sample):
 
 def get_primary_assemblies_from_sample(sample_accessions):
     primary_assemblies = []
+    assembly2runs = {}
     api_endpoint = "https://www.ebi.ac.uk/ena/portal/api/search"
     for sample_accession in sample_accessions:
         sample_type = (
@@ -232,9 +269,12 @@ def get_primary_assemblies_from_sample(sample_accessions):
 
         for row in reader:
             assembly_accession = row["analysis_accession"]
+            # TODO what if it's co assembly?
+            run_accession = row["run_accession"]
             primary_assemblies.append(assembly_accession)
+            assembly2runs[assembly_accession] = run_accession
 
-    return primary_assemblies
+    return primary_assemblies, assembly2runs
 
 
 def retrieve_assembly_runs_from_xml(assembly_data):
@@ -250,18 +290,6 @@ def retrieve_assembly_runs_from_xml(assembly_data):
             return get_run_ids_from_description(analysis_description)
         except Exception:
             return None
-
-
-def decrease_number_of_assemblies(assembly2metadata, bin_runs):
-    for assembly, (_, assembly_run_genome_accession) in list(assembly2metadata.items()):
-        if (
-            not assembly_run_genome_accession
-        ):  # if run(s) of the assembly not found, save it to check with checksum later
-            continue
-        if {assembly_run_genome_accession} != set(bin_runs):
-            del assembly2metadata[assembly]
-
-    return assembly2metadata
 
 
 def genbank_to_ena_wgsset_accession(genome_accession):
@@ -357,12 +385,18 @@ def parse_args():
     )
     parser.add_argument(
         "-i",
-        "--infile",
+        "--input",
         required=True,
         help="Path to the file containing a list of bin/MAG accessions, one per line.",
     )
     parser.add_argument(
-        "-o", "--outfile", required=True, help="Name of the outfile to write MAG-assembly pairs."
+        "-o", "--output", required=True, help="Name of the output_file to write MAG-assembly pairs."
+    )
+    parser.add_argument(
+        "-e",
+        "--errors",
+        required=True,
+        help="Name of the output file to log genomes not linked to assemblies.",
     )
     parser.add_argument("--debug", action="store_true", help="Print out more information")
     return parser.parse_args()
@@ -371,4 +405,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     setup_logging(args.debug)
-    main(args.infile, args.outfile)
+    main(args.input, args.output, args.errors)

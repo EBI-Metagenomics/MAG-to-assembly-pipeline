@@ -1,25 +1,31 @@
 process MAP_GENOMES_TO_ASSEMBLIES {
+    tag "$meta.id"
+    label 'process_single'
+
     container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
 
     input:
-    path accessions
+    tuple val(meta), path(accessions)
 
     output:
-    path "*.tsv", emit: genome_to_assemblies_mapping
+    tuple val(meta), path("*.tsv"), emit: genome_to_assemblies_mapping
 
     script:
+    def prefix = task.ext.prefix ?: "$meta.id"
     def debug_flag = params.debug ? "--debug" : ""
+
     """
     map_genomes_to_assemblies.py \\
-        -i ${accessions} \\
-        -o ${accessions}.links.tsv \\
-        -p ${accessions}.not_linked.tsv \\
-        -f ${accessions}.failed.tsv \\
+        --input ${accessions} \\
+        --output ${prefix}.links.tsv \\
+        --errors ${prefix}.not_linked.tsv --debug \\
         ${debug_flag}
     """
 
     stub:
-    """
+    def prefix = task.ext.prefix ?: "$meta.id"
 
+    """
+    touch "${prefix}.links.tsv"
     """
 }
