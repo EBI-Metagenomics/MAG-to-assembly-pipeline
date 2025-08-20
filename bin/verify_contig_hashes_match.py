@@ -20,9 +20,9 @@ from download_fasta_utils import (
 )
 
 
-def main(input_file, output_file, errors_file, download_folder, cleanup):
-    error_lines = []
-    output_lines = []
+def main(input_file, output_verified_file, output_invalid_file, download_folder, cleanup):
+    validated_pairs = []
+    invalid_pairs = []
 
     with open(input_file, "r") as input_handle:
         reader = csv.reader(input_handle, delimiter="\t")
@@ -34,7 +34,6 @@ def main(input_file, output_file, errors_file, download_folder, cleanup):
             mag_hashes = handle_fasta_processing(genome, download_folder, write_cache=False)
             if not mag_hashes:
                 logging.info(f"Failed to download genome {genome} fasta file. Skipping")
-                error_lines.append([genome, "Unable to download genome fasta file"])
                 continue
 
             logging.debug("Genome hashes were computed")
@@ -66,18 +65,28 @@ def main(input_file, output_file, errors_file, download_folder, cleanup):
             logging.debug("Comparason finished")
 
             if confirmed_assemblies:
-                output_lines.append([genome, ",".join(confirmed_assemblies)])
+                validated_pairs.append([genome, ",".join(confirmed_assemblies)])
+            else:
+                logging.debug(
+                    f"Genome {genome} does not have any assemblies with matching contig hashes"
+                )
+                invalid_pairs.append(
+                    [
+                        genome,
+                        f"the contigs of this genome are not identical to the contigs in the primary assemblies {','.join(assemblies)}",
+                    ]
+                )
 
     logging.debug("Writing results to the output file")
-    with open(output_file, "w") as out:
+    with open(output_verified_file, "w") as out:
         writer = csv.writer(out, delimiter="\t")
-        for line in output_lines:
+        for line in validated_pairs:
             writer.writerow(line)
 
     logging.debug("Writing errors to the errors file")
-    with open(errors_file, "w") as out:
+    with open(output_invalid_file, "w") as out:
         writer = csv.writer(out, delimiter="\t")
-        for line in error_lines:
+        for line in invalid_pairs:
             writer.writerow(line)
 
     if cleanup and download_folder.exists():
@@ -209,18 +218,22 @@ def parse_args():
         help="Path to the file containing a mapping of genomes to assemblies",
     )
     parser.add_argument(
-        "-o",
-        "--output",
+        "--output_verified",
         required=True,
         type=Path,
-        help="Name of the output file to write MAG-assembly pairs that have full checksum matching",
+        help="Name of the output file to write genome-assembly pairs where all genome contigs match assembly contigs",
     )
     parser.add_argument(
-        "-p",
+        "--output_invalid",
+        required=True,
+        type=Path,
+        help="Name of the output file to write genome-assembly pairs that failed contig validation",
+    )
+    parser.add_argument(
         "--errors",
         required=True,
         type=Path,
-        help="Name of the output file to write genome accessions that failed to download or verify assemblies",
+        help="Name of the output file to log ENA-ralated errors during fasta download",
     )
     parser.add_argument(
         "--download-folder",
@@ -265,5 +278,5 @@ def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
 
 if __name__ == "__main__":
     args = parse_args()
-    setup_logging(args.debug)
-    main(args.input, args.output, args.errors, args.download_folder, args.cleanup)
+    setup_logging(args.debug, args.errors)
+    main(args.input, args.output_verified, args.output_invalid, args.download_folder, args.cleanup)

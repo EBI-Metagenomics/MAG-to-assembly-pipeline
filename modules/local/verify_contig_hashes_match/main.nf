@@ -8,8 +8,9 @@ process VERIFY_CONTIG_HASHES_MATCH {
     tuple val(meta), path(genome_to_assemblies_mapping)
 
     output:
-    tuple val(meta), path("*.validated.tsv"), emit: validated_mag_assembly_pairs
-    tuple val(meta), path("*.err")          , emit: error_log
+    tuple val(meta), path("*.verified.tsv"), emit: verified_pairs, optional: true
+    path("*.invalid.tsv")                  , emit: invalid_pairs, optional: true
+    path("*.err")                          , emit: error_log, optional: true
 
     script:
     def prefix = task.ext.prefix ?: "$meta.id"
@@ -19,7 +20,8 @@ process VERIFY_CONTIG_HASHES_MATCH {
     """
     verify_contig_hashes_match.py \\
         --input ${genome_to_assemblies_mapping} \\
-        --output ${prefix}.validated.tsv \\
+        --output_verified ${prefix}.verified.tsv \\
+        --output_invalid ${prefix}.invalid.tsv \\
         --errors ${prefix}.err \\
         ${cleanup_flag} \\
         ${debug_flag}
@@ -29,7 +31,8 @@ process VERIFY_CONTIG_HASHES_MATCH {
     def prefix = task.ext.prefix ?: "$meta.id"
 
     """
-    touch "${prefix}.validated.tsv"
+    touch "${prefix}.verified.tsv"
+    touch "${prefix}.invalid.tsv"
     touch "${prefix}.err"
     """
 }
