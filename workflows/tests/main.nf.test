@@ -12,27 +12,23 @@ nextflow_workflow {
             }
             params {
                     // required files
-                    gut_mapping           = "${projectDir}/data/known_and_found_gut_genomes.tsv"
-
-                    // names for generated intermidiate files
-                    input_accessions      = 'input_accessions.tsv'
-                    catalogue_metadata    = 'all_catalog_metadata.tsv'
+                    gut_mapping         = "${projectDir}/data/known_and_found_gut_genomes.tsv"
 
                     // user input args
-                    portion_size          = 2
-                    previous_table        = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
-                    processed_acc         = "${moduleDir}/tests/data/processed_accessions.tsv"
-                    external_input        = "${moduleDir}/tests/data/input_accessions.tsv"
-                    external_metadata     = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
-                    output_path           = "${outputDir}"
-                    debug                 = true
+                    batch_size          = 3
+                    merge_with_results  = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
+                    skip_accessions     = "${moduleDir}/tests/data/processed_accessions.tsv"
+                    accessions_list     = "${moduleDir}/tests/data/input_accessions.tsv"
+                    catalogues_metadata = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
+                    output_path         = "${outputDir}"
+                    debug               = true
             }
         }
 
         then {
             assert workflow.success
 
-            with(workflow.out.mag_to_assembly_links_ch) {
+            with(workflow.out.mag_to_assembly_mapping) {
                 // check header
                 assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action')
                 // check that line from previous table is present
@@ -41,7 +37,9 @@ nextflow_workflow {
                 assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098	add')
                 assert path(get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add')
             }
-            with(workflow.out.processed_accessions_ch) {
+            with(workflow.out.processed_accessions) {
+                // check that processed accessions from previous run are present
+                assert path(get(0)).readLines().contains('ERZ1051661')
                 // check that accessions from current run are added to the list of processed accessions
                 assert path(get(0)).readLines().contains('ERZ1022847')
                 assert path(get(0)).readLines().contains('ERZ1462793')

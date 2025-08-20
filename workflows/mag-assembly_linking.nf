@@ -7,33 +7,46 @@ include { FORMAT_OUTPUT_RESULTS      } from '../modules/local/format_output_resu
 
 workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     main:
-        processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc, checkIfExists: true) : []
+        skip_accessions_ch = params.skip_accessions ? Channel.fromPath(params.skip_accessions, checkIfExists: true) : []
 
-        // If custom input accessions are provided, use them instead of the downloaded accessions
-        if (params.external_input) {
-            accessions_list_ch = Channel.fromPath(params.external_input, checkIfExists: true)
-            metadata_ch = params.external_metadata ? Channel.fromPath(params.external_metadata, checkIfExists: true) : []
+        // If custom list of input accessions is provided, use it instead of the accessions collected from ENA and MGnify
+        if (params.accessions_list) {
+            accessions_list_ch     = Channel.fromPath(params.accessions_list, checkIfExists: true)
+            catalogues_metadata_ch = params.catalogues_metadata ? Channel.fromPath(params.catalogues_metadata, checkIfExists: true) : []
 
+        // Otherwise, build list of input genomes from ENA bins and MAGs and MGnify catalogues
         } else {
-            COLLECT_INPUT_ACCESSIONS(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
-            metadata_ch = COLLECT_INPUT_ACCESSIONS.output.metadata
-            accessions_list_ch = COLLECT_INPUT_ACCESSIONS.output.input_accessions
+            COLLECT_INPUT_ACCESSIONS(skip_accessions_ch, params.gut_accessions_mapping)
+            accessions_list_ch     = COLLECT_INPUT_ACCESSIONS.output.input_accessions
+            catalogues_metadata_ch = COLLECT_INPUT_ACCESSIONS.output.catalogues_metadata
         }
 
-        // Input accessions are splitted to process them faster in parallel tasks
-        accessions_batches_ch = accessions_list_ch.splitText(by: params.batch_size, file: "batch")
+        // Input accessions are splitted into batches of size params.batch_size to process them faster in parallel
+        accessions_batches_ch = accessions_list_ch
+            .splitText(by: params.batch_size, file: "batch")
+            .map { batch_file ->
+                def meta = [id: batch_file.name]
+                [meta, batch_file]
+            }
 
-        MAP_GENOMES_TO_ASSEMBLIES(accessions_batches_ch, metadata_ch, params.catalogue_metadata, params.gut_mapping)
+        // Find primary assembly for each genome using information from ENA
+        MAP_GENOMES_TO_ASSEMBLIES(accessions_batches_ch)
 
-        VERIFY_CONTIG_HASHES_MATCH(MAP_GENOMES_TO_ASSEMBLIES.OUT)
+        // Verify that contigs are identical in a genome and its assembly
+        VERIFY_CONTIG_HASHES_MATCH(MAP_GENOMES_TO_ASSEMBLIES.output.tsv_mapping)
 
-        mag_assembly_pairs_ch = VERIFY_CONTIG_HASHES_MATCH.output.mag_assembly_pairs
-        not_linked_mags_ch = VERIFY_CONTIG_HASHES_MATCH.output.not_linked_mags
-        previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : []
+        mag_assembly_pairs_ch = VERIFY_CONTIG_HASHES_MATCH.output.verified_pairs
+            .map { _meta, pairs_tsv -> pairs_tsv}
+            .collectFile(name: "mag_to_assembly_mapping.tsv")
+        no_assembly_genomes_ch = VERIFY_CONTIG_HASHES_MATCH.output.invalid_pairs
+            .mix(MAP_GENOMES_TO_ASSEMBLIES.output.no_assembly_found)
+            .collectFile(name: "no_assembly_genomes.tsv")
+        previous_results_ch = params.merge_with_results ? Channel.fromPath(params.merge_with_results) : []
 
-        FORMAT_OUTPUT_RESULTS(mag_assembly_pairs_ch.collect(), not_linked_mags_ch.collect(), metadata_ch, processed_acc_ch, previous_table_ch)
+        // Format output results: create a table with MAGs, their primary assemblies and MGYG accessions, and update the list of processed accessions
+        FORMAT_OUTPUT_RESULTS(mag_assembly_pairs_ch, no_assembly_genomes_ch, catalogues_metadata_ch, skip_accessions_ch, previous_results_ch)
 
     emit:
-        mag_to_assembly_links_ch = FORMAT_OUTPUT_RESULTS.out.mag_to_assembly_links
-        processed_accessions_ch = FORMAT_OUTPUT_RESULTS.out.processed_accessions
+        mag_to_assembly_mapping = FORMAT_OUTPUT_RESULTS.out.mag_to_assembly_mapping
+        processed_accessions    = FORMAT_OUTPUT_RESULTS.out.processed_accessions
 }
