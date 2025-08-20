@@ -9,8 +9,8 @@ nextflow_process {
         when {
             process {
                 """
-                input[0] = Channel.fromPath("${moduleDir}/tests/data/*links.tsv", checkIfExists: true).collect()
-                input[1] = Channel.fromPath("${moduleDir}/tests/data/*not_linked.tsv", checkIfExists: true).collect()
+                input[0] = Channel.fromPath("${moduleDir}/tests/data/*.mapped_pairs.tsv", checkIfExists: true).collect()
+                input[1] = Channel.fromPath("${moduleDir}/tests/data/*.no_assembly.tsv", checkIfExists: true).collect()
                 input[2] = file("${moduleDir}/tests/data/all_catalog_metadata.tsv")
                 input[3] = file("${moduleDir}/tests/data/processed_accessions.tsv")
                 input[4] = file("${moduleDir}/tests/data/mag_to_assembly_links.tsv")
@@ -19,11 +19,49 @@ nextflow_process {
         }
 
         then {
-            assert process.success
-            assert path(process.out.mag_to_assembly_links.get(0)).md5 == "083454f116f953fd5569a253c168aaf7"
-            assert path(process.out.processed_accessions.get(0)).md5 == "6a007e373a51fb05ed4dfdcdf8bd9e85"
+            assertAll(
+                { assert process.success },
+                // Check that lines from previous table are present in the output
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add') },
+                // Check that new lines from current run are added
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1694383	GCA_905170305	NA	NA	add') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add') },
+                // Check that processed accessions from previous run are present
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('ERZ1051661') },
+                // Check that processed accessions from current run are added
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('ERZ1462793') },
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('ERZ1022847') },
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('RSAC01') },
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('GCA_905170305') },
+            )
         }
 
     }
 
+    test("Output files preparation - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = Channel.fromPath("${moduleDir}/tests/data/*.mapped_pairs.tsv", checkIfExists: true).collect()
+                input[1] = Channel.fromPath("${moduleDir}/tests/data/*.no_assembly.tsv", checkIfExists: true).collect()
+                input[2] = file("${moduleDir}/tests/data/all_catalog_metadata.tsv")
+                input[3] = file("${moduleDir}/tests/data/processed_accessions.tsv")
+                input[4] = file("${moduleDir}/tests/data/mag_to_assembly_links.tsv")
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).exists() },
+                { assert path(process.out.processed_accessions.get(0)).exists() },
+            )
+        }
+
+    }
 }

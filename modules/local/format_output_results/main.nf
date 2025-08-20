@@ -1,29 +1,37 @@
 process FORMAT_OUTPUT_RESULTS {
-    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
     label 'process_single'
 
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+
     input:
-    path linked_tsv
-    path not_linked_tsv
-    path catalogue_metadata
-    path previous_processed_acc, stageAs: 'previous_processed_acc.tsv'
+    path mapped_genomes_tsv
+    path not_mapped_genomes_tsv
+    path catalogues_metadata
+    path previously_processed_acc, stageAs: 'previously_processed_acc.tsv'
     path previous_table, stageAs: 'previous_table.tsv'
 
 
     output:
-    path 'mag_to_assembly_links_*.tsv', emit: mag_to_assembly_links
-    path 'processed_accessions_*.tsv', emit: processed_accessions
+    path 'mag_to_assembly_mapping_*.tsv', emit: mag_to_assembly_mapping
+    path 'processed_accessions_*.tsv'   , emit: processed_accessions
 
     script:
-    def processed_accessions = previous_processed_acc ? "previous_processed_acc.tsv" : ""
+    def processed_accessions   = previously_processed_acc ? "previously_processed_acc.tsv" : ""
     def previous_linking_table = previous_table ? "--previous-table previous_table.tsv" : ""
-    def metadata_file = catalogue_metadata ? "--catalogue-metadata ${catalogue_metadata}" : ""
-    """
-    cat ${linked_tsv} ${not_linked_tsv} ${processed_accessions} | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
+    def metadata_file          = catalogues_metadata ? "--catalogue-metadata ${catalogues_metadata}" : ""
 
-    finalise_output.py \\
+    """
+    cat ${mapped_genomes_tsv} ${not_mapped_genomes_tsv} ${processed_accessions} | cut -f 1 > processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
+
+    format_output.py \\
         ${previous_linking_table} \\
         ${metadata_file}  \\
-        ${linked_tsv}
+        ${mapped_genomes_tsv}
+    """
+
+    stub:
+    """
+    touch mag_to_assembly_mapping_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
+    touch processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
     """
 }

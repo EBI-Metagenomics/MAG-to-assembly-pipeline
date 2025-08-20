@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding=utf-8
 
 import argparse
@@ -15,7 +15,6 @@ def main(results, catalogue_metadata, previous_table):
             df = pd.read_csv(
                 file,
                 sep="\t",
-                usecols=[0, 3],
                 names=["MAG_accession", "Primary_assembly"],
                 header=None,
             )
@@ -55,7 +54,7 @@ def main(results, catalogue_metadata, previous_table):
         result_df = pd.concat([unique_previous_df, result_df]).reset_index(drop=True)
 
     result_df.fillna("NA", inplace=True)
-    output_file = generate_filename("mag_to_assembly_links")
+    output_file = generate_filename("mag_to_assembly_mapping")
     result_df.to_csv(output_file, sep="\t", index=False)
 
 
