@@ -1,25 +1,30 @@
 process COLLECT_INPUT_ACCESSIONS {
-    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
     label 'process_single'
 
-    input:
-    path processed_acc
-    val input_accessions
-    path gut_mapping
-    val catalogue_metadata
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
 
+    input:
+    path skip_accessions
+    path gut_accessions_mapping
 
     output:
-    path "${input_accessions}", emit: input_accessions
-    path catalogue_metadata, emit: metadata
+    path "input_accessions.tsv"    , emit: input_accessions
+    path "all_catalog_metadata.tsv", emit: catalogues_metadata
 
     script:
-    def processed_accession = processed_acc ? "--processed-acc ${processed_acc}" : ""
+    def skip_accessions_flag = skip_accessions ? "--skip_accessions ${skip_accessions}" : ""
+
     """
     download_genome_accessions.py \\
-        $processed_accession \\
-        --output-accessions ${input_accessions} \\
-        --gut-mapping ${gut_mapping} \\
-        --catalogue-metadata ${catalogue_metadata}
+        $skip_accessions_flag \\
+        --gut-mapping ${gut_accessions_mapping} \\
+        --output-accessions input_accessions.tsv \\
+        --catalogue-metadata all_catalog_metadata.tsv
+    """
+
+    stub:
+    """
+    touch input_accessions.tsv
+    touch all_catalog_metadata.tsv
     """
 }

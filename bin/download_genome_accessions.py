@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding=utf-8
 
 import argparse
@@ -12,7 +12,7 @@ import requests
 from tqdm import tqdm
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         # logging.FileHandler(filename='script.log'),
@@ -25,7 +25,7 @@ mag_layer_file = Path("mag_layer.tsv")
 bin_layer_file = Path("bin_layer.tsv")
 
 
-def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_file):
+def main(skip_accessions_file, output_file, catalogues_metadata_file, gut_mapping_file):
     logging.info(
         "Starting preparation of the list of input accessions for genome-primary assembly linking script..."
     )
@@ -52,7 +52,7 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
                     """,
         "format": "tsv",
     }
-    download_layer(mag_layer_data, mag_layer_file)
+    download_ENA_layer(mag_layer_data, mag_layer_file)
 
     logging.info("Step 3/5:")
     logging.info("Download all genomes from bin layer of ENA...")
@@ -74,10 +74,12 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
                     """,
         "format": "tsv",
     }
-    download_layer(bin_layer_data, bin_layer_file)
+    download_ENA_layer(bin_layer_data, bin_layer_file)
 
     logging.info("Step 4/5:")
-    logging.info("Merge all downloaded accessions removing redunduncy...")
+    logging.info(
+        "Merge accessions downloaded from ENA and MGnify catalogues to remove redunduncy..."
+    )
     catalogues_df = pd.read_csv(
         catalogues_metadata_file, usecols=[2], names=["Genome_accession"], sep="\t", skiprows=1
     )
@@ -104,9 +106,9 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
     logging.info(
         "Remove from the output all accessions that found in the input list of previously processed genomes..."
     )
-    if processed_acc_file and processed_acc_file.stat().st_size != 0:
+    if skip_accessions_file and skip_accessions_file.stat().st_size != 0:
         processed_df = pd.read_csv(
-            processed_acc_file, header=None, names=["Genome_accession"], sep="\t"
+            skip_accessions_file, header=None, names=["Genome_accession"], sep="\t"
         )
         combined_df = combined_df[
             ~combined_df["Genome_accession"].isin(processed_df["Genome_accession"])
@@ -118,8 +120,16 @@ def main(processed_acc_file, output_file, catalogues_metadata_file, gut_mapping_
     logging.info(f"Finished successfully! List of genome accessions is saved to {output_file}")
 
 
-def download_all_catalogues_metadata(work_dir, output_file, previous=None):
+def download_all_catalogues_metadata(work_dir: Path, output_file: Path):
+    """
+    Download files genomes-all_metadata.tsv from all MGnify catalogues and concatenate them into a single file.
+    :param work_dir: Directory to download files to.
+    :param output_file: File to write concatenated metadata to.
+    :return: None
+    """
     logging.info("Collecting all genomes-all_metadata.tsv files from MGnify FTP...")
+    df_list = []
+
     ftp_host = "ftp.ebi.ac.uk"
     ftp_dir = "/pub/databases/metagenomics/mgnify_genomes/"
 
@@ -127,17 +137,13 @@ def download_all_catalogues_metadata(work_dir, output_file, previous=None):
     ftp.login()
     ftp.cwd(ftp_dir)
     catalogs = ftp.nlst()
-    df_list = []
     for folder in tqdm(catalogs):
+        logging.debug(f"Processing catalogue: {folder}")
         ftp.cwd(folder)
         catalog_versions = ftp.nlst()
         latest_folder = which_is_latest(catalog_versions)
         if latest_folder:
-
-            # if the catalog was processed previously, then skip it
-            if previous and folder in previous and previous[folder] == latest_folder:
-                continue
-
+            logging.debug(f"Latest version of the catalogue {folder} is {latest_folder}")
             ftp.cwd(latest_folder)
             filename = "genomes-all_metadata.tsv"
             local_filename = work_dir / filename
@@ -147,10 +153,8 @@ def download_all_catalogues_metadata(work_dir, output_file, previous=None):
             df = df[df["Genome_type"] == "MAG"]
             df = df[["Genome", "Genome_type", "Genome_accession", "Species_rep"]]
             df_list.append(df)
-            # TODO return this variable
-            if previous:
-                previous[folder] = latest_folder
             os.remove(local_filename)
+            logging.debug(f"Downloaded and processed {filename} from {folder}/{latest_folder}")
             ftp.cwd("../..")
     ftp.quit()
     if df_list:
@@ -158,9 +162,7 @@ def download_all_catalogues_metadata(work_dir, output_file, previous=None):
         concatenated_df.to_csv(output_file.with_suffix(".source.tsv"), sep="\t", index=False)
         logging.info("Successfully completed!")
     else:
-        logging.info(
-            "No catalogue updates were made since the last run of the pipeline. Nothing was downloaded."
-        )
+        logging.error("No catalogues found or no genomes-all_metadata.tsv files available.")
 
 
 def which_is_latest(list_of_versions):
@@ -169,6 +171,8 @@ def which_is_latest(list_of_versions):
     for version in list_of_versions:
         if version.startswith("v"):
             version_parts = version.rstrip("/").split("v")[-1].split(".")
+            if "beta" in version_parts:
+                version_parts = ["0", "1"]  # Treat beta versions as 0.1
             version_parts = [int(part) for part in version_parts]
             version_parts += [0] * (3 - len(version_parts))
             if tuple(version_parts) > tuple(map(int, latest_version.split("."))):
@@ -177,7 +181,7 @@ def which_is_latest(list_of_versions):
     return latest_folder
 
 
-def remove_gut_genomes(gut_mapping_file, catalogues_metadata_file):
+def remove_gut_genomes(gut_mapping_file: Path, catalogues_metadata_file: Path):
     logging.info("Starting preprocessing of MGnify catalogues metadata to remove GUT_GENOME ids...")
     catalogues_metadata_df = pd.read_csv(
         catalogues_metadata_file.with_suffix(".source.tsv"), sep="\t"
@@ -206,7 +210,7 @@ def remove_gut_genomes(gut_mapping_file, catalogues_metadata_file):
     )
 
 
-def download_layer(data, output_file):
+def download_ENA_layer(data, output_file):
     url = "https://www.ebi.ac.uk/ena/portal/api/search"
     try:
         response = requests.post(
@@ -225,7 +229,7 @@ if __name__ == "__main__":
         description="Download lists of accessions from MGnify catalogues and ENA, merge them, remove redundancy and accessions that were processed in the past"
     )
     parser.add_argument(
-        "--processed-acc",
+        "--skip_accessions",
         "-i",
         default=None,
         required=False,
@@ -255,4 +259,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    main(args.processed_acc, args.output_accessions, args.catalogue_metadata, args.gut_mapping)
+    main(args.skip_accessions, args.output_accessions, args.catalogue_metadata, args.gut_mapping)
