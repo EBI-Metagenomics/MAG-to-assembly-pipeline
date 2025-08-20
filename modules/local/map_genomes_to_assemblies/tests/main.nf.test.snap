@@ -7,57 +7,43 @@
                         {
                             "id": "batch.1"
                         },
-                        [
-                            "batch.1.links.tsv:md5,4cd03cb14fb580dbd3368db950065ccc",
-                            "batch.1.not_linked.tsv:md5,da5dffc493f4af98563c545957f180a1"
-                        ]
+                        "batch.1.mapped_pairs.tsv:md5,b937475e57a4349c53638db3c85bd0fd"
                     ],
                     [
                         {
                             "id": "batch.2"
                         },
-                        [
-                            "batch.2.links.tsv:md5,99dac922828be77a7120f3f42c313af5",
-                            "batch.2.not_linked.tsv:md5,41c60ecf190dc2e2e97879b0b4787e32"
-                        ]
-                    ],
-                    [
-                        {
-                            "id": "batch.3"
-                        },
-                        [
-                            "batch.3.links.tsv:md5,63742a78a8f76946289cc64b24768737",
-                            "batch.3.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
-                        ]
+                        "batch.2.mapped_pairs.tsv:md5,63742a78a8f76946289cc64b24768737"
                     ]
                 ],
-                "genome_to_assemblies_mapping": [
+                "1": [
+                    "batch.1.no_assembly.tsv:md5,1f29bf1bf7836ff88801a38d6284232a",
+                    "batch.2.no_assembly.tsv:md5,564bd27ef51393a77327ff4fc866e509"
+                ],
+                "2": [
+                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
+                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "error_log": [
+                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
+                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "no_assembly_found": [
+                    "batch.1.no_assembly.tsv:md5,1f29bf1bf7836ff88801a38d6284232a",
+                    "batch.2.no_assembly.tsv:md5,564bd27ef51393a77327ff4fc866e509"
+                ],
+                "tsv_mapping": [
                     [
                         {
                             "id": "batch.1"
                         },
-                        [
-                            "batch.1.links.tsv:md5,4cd03cb14fb580dbd3368db950065ccc",
-                            "batch.1.not_linked.tsv:md5,da5dffc493f4af98563c545957f180a1"
-                        ]
+                        "batch.1.mapped_pairs.tsv:md5,b937475e57a4349c53638db3c85bd0fd"
                     ],
                     [
                         {
                             "id": "batch.2"
                         },
-                        [
-                            "batch.2.links.tsv:md5,99dac922828be77a7120f3f42c313af5",
-                            "batch.2.not_linked.tsv:md5,41c60ecf190dc2e2e97879b0b4787e32"
-                        ]
-                    ],
-                    [
-                        {
-                            "id": "batch.3"
-                        },
-                        [
-                            "batch.3.links.tsv:md5,63742a78a8f76946289cc64b24768737",
-                            "batch.3.not_linked.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
-                        ]
+                        "batch.2.mapped_pairs.tsv:md5,63742a78a8f76946289cc64b24768737"
                     ]
                 ]
             }
@@ -66,6 +52,61 @@
             "nf-test": "0.9.0",
             "nextflow": "25.04.1"
         },
-        "timestamp": "2025-08-19T12:08:21.970119"
+        "timestamp": "2025-08-20T12:05:31.504703"
+    },
+    "Find assemblies for the test list of accessions - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "batch.1"
+                        },
+                        "batch.1.mapped_pairs.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        {
+                            "id": "batch.2"
+                        },
+                        "batch.2.mapped_pairs.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "1": [
+                    "batch.1.no_assembly.tsv:md5,d41d8cd98f00b204e9800998ecf8427e",
+                    "batch.2.no_assembly.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "2": [
+                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
+                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "error_log": [
+                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
+                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "no_assembly_found": [
+                    "batch.1.no_assembly.tsv:md5,d41d8cd98f00b204e9800998ecf8427e",
+                    "batch.2.no_assembly.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "tsv_mapping": [
+                    [
+                        {
+                            "id": "batch.1"
+                        },
+                        "batch.1.mapped_pairs.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ],
+                    [
+                        {
+                            "id": "batch.2"
+                        },
+                        "batch.2.mapped_pairs.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.0",
+            "nextflow": "25.04.1"
+        },
+        "timestamp": "2025-08-20T12:05:33.853257"
     }
 }

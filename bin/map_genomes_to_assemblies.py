@@ -37,9 +37,10 @@ def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
         logging.getLogger(noisy_lib).setLevel(logging.WARNING)
 
 
-def main(input_file, output_file, errors_file):
-    output_lines = []
-    error_lines = []
+def main(input_file, output_file, no_assembly_file):
+    genome_assembly_pairs = []
+    no_assembly_genomes = []
+
     with open(input_file, "r") as file_in:
         reader = csv.reader(file_in)
         for row in tqdm(reader):
@@ -57,7 +58,7 @@ def main(input_file, output_file, errors_file):
                 logging.info(
                     f"Unable to find sample accession for the genome {genome_accession}. Skipping"
                 )
-                error_lines.append(
+                no_assembly_genomes.append(
                     [
                         genome_accession,
                         "unable to find sample accession corresponding to the genome",
@@ -75,7 +76,7 @@ def main(input_file, output_file, errors_file):
                 genome_sample
             )
             if not derived_from:
-                error_lines.append(
+                no_assembly_genomes.append(
                     [
                         genome_accession,
                         f"unable to load XML or 'derived from' field does not exist in XML of genome sample {genome_sample}",
@@ -83,7 +84,7 @@ def main(input_file, output_file, errors_file):
                 )
                 continue
             if not derived_from_samples:
-                error_lines.append(
+                no_assembly_genomes.append(
                     [
                         genome_accession,
                         f"unable to find 'derived from' sample from run metadata for {genome_sample}",
@@ -103,7 +104,7 @@ def main(input_file, output_file, errors_file):
             )
             if not primary_assemblies:  # cases when primary assembly was not uploaded to ENA
                 logging.debug("There are no assemblies for the given Biosample")
-                error_lines.append(
+                no_assembly_genomes.append(
                     [
                         genome_accession,
                         f"there are no assemblies for genome sample: {genome_sample}, 'derived from' samples: {','.join(derived_from_samples)}",
@@ -126,7 +127,7 @@ def main(input_file, output_file, errors_file):
                     logging.info(
                         "All found primary assemblies were discarded during run comparason. Skipping"
                     )
-                    error_lines.append(
+                    no_assembly_genomes.append(
                         [
                             genome_accession,
                             f"there are no assemblies with similar runs for genome sample {genome_sample}, 'derived from' samples {','.join(derived_from_samples)}",
@@ -136,10 +137,10 @@ def main(input_file, output_file, errors_file):
                 logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies)}")
 
             if primary_assemblies:
-                output_lines.append([genome_accession, ",".join(primary_assemblies)])
+                genome_assembly_pairs.append([genome_accession, ",".join(primary_assemblies)])
             else:
                 logging.debug(f"No primary assemblies found for {genome_accession}")
-                error_lines.append(
+                no_assembly_genomes.append(
                     [
                         genome_accession,
                         f"no primary assemblies found for genome sample {genome_sample}, 'derived from' samples {','.join(derived_from_samples)}",
@@ -149,13 +150,13 @@ def main(input_file, output_file, errors_file):
     logging.debug("Write list of assemblies to the output file")
     with open(output_file, "w") as file_out:
         writer = csv.writer(file_out, delimiter="\t")
-        for line in output_lines:
+        for line in genome_assembly_pairs:
             writer.writerow(line)
 
     logging.debug("Write errors to the error file")
-    with open(errors_file, "w") as file_out:
+    with open(no_assembly_file, "w") as file_out:
         writer = csv.writer(file_out, delimiter="\t")
-        for line in error_lines:
+        for line in no_assembly_genomes:
             writer.writerow(line)
 
 
@@ -387,16 +388,24 @@ def parse_args():
         "-i",
         "--input",
         required=True,
-        help="Path to the file containing a list of bin/MAG accessions, one per line.",
+        help="Path to the file containing a list of bin/MAG genome accessions, one per line.",
     )
     parser.add_argument(
-        "-o", "--output", required=True, help="Name of the output_file to write MAG-assembly pairs."
+        "-o",
+        "--output",
+        required=True,
+        help="Name of the output_file to write genome-assembly pairs.",
+    )
+    parser.add_argument(
+        "--no_assembly_found",
+        required=True,
+        help="Name of the output file to write genome accessions for which no primary assembly was found.",
     )
     parser.add_argument(
         "-e",
         "--errors",
         required=True,
-        help="Name of the output file to log genomes not linked to assemblies.",
+        help="Name of the output file to log ENA-related errors.",
     )
     parser.add_argument("--debug", action="store_true", help="Print out more information")
     return parser.parse_args()
@@ -404,5 +413,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    setup_logging(args.debug)
-    main(args.input, args.output, args.errors)
+    setup_logging(args.debug, args.errors)
+    main(args.input, args.output, args.no_assembly_found)
