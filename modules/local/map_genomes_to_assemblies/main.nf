@@ -2,7 +2,7 @@ process MAP_GENOMES_TO_ASSEMBLIES {
     tag "$meta.id"
     label 'process_single'
 
-    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1-multiarch'
 
     input:
     tuple val(meta), path(accessions)

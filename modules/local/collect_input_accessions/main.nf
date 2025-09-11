@@ -1,7 +1,7 @@
 process COLLECT_INPUT_ACCESSIONS {
     label 'process_single'
 
-    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1-multiarch'
 
     input:
     path skip_accessions

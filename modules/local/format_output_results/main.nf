@@ -1,7 +1,7 @@
 process FORMAT_OUTPUT_RESULTS {
     label 'process_single'
 
-    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1-multiarch'
 
     input:
     path mapped_genomes_tsv

@@ -2,7 +2,7 @@ process VERIFY_CONTIG_HASHES_MATCH {
     tag "$meta.id"
     label 'process_single'
 
-    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1'
+    container 'quay.io/microbiome-informatics/mag-assembly-linking:v1.1-multiarch'
 
     input:
     tuple val(meta), path(genome_to_assemblies_mapping)
