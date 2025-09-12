@@ -176,10 +176,8 @@ def find_genome_sample_in_ena(genome_accession: str) -> str:
         )
         genome_ena_data = load_data(genome_accession, endpoint_type="xml")
         accession_type = "ANALYSIS" if genome_accession.startswith("ERZ") else "ASSEMBLY"
-        sample = genome_ena_data[f"{accession_type}_SET"][f"{accession_type}"]["SAMPLE_REF"][
-            "IDENTIFIERS"
-        ]["PRIMARY_ID"]
-        return sample
+        sample_ref = genome_ena_data[f"{accession_type}_SET"][f"{accession_type}"]["SAMPLE_REF"]
+        return sample_ref["IDENTIFIERS"]["PRIMARY_ID"]
     else:
         logging.debug(
             f"{genome_accession} is an ENA WGS set accession, retrieving summary from ENA portal"

@@ -29,7 +29,7 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
         for row in reader:
             genome = row[0]
             assemblies = row[1].split(",")
-
+            logging.debug(f"Start processing of genome {genome}")
             logging.debug("Verify retrieved assemblies using comparason of contigs' hashes")
             mag_hashes = handle_fasta_processing(genome, download_folder, write_cache=False)
             if not mag_hashes:
@@ -152,6 +152,7 @@ def handle_fasta_processing(
         reason = e.response.reason if e.response else "?"
         logging.error(f"{accession} HTTP Error while downloading: {status_code} - {reason}")
         return None
+    # TODO: remove or handle more specific exceptions if needed
     except Exception as e:
         logging.error(f"{accession} Failed to process fasta file due to: {e}")
         return None
