@@ -3,11 +3,9 @@
 
 import argparse
 import csv
-import json
 import logging
 import re
 import time
-import urllib.parse
 from functools import wraps
 from typing import Optional
 
@@ -46,12 +44,11 @@ def main(input_file, output_file, no_assembly_file):
             try:
                 genome_sample = find_genome_sample_in_ena(genome_accession)
             except (requests.exceptions.RequestException, KeyError, ValueError) as e:
-                message = (
-                    f"Failed to fetch sample accession for the genome {genome_accession} due to {e}"
+                log_skipped_genome(
+                    genome_accession,
+                    f"Failed to fetch sample accession for the genome {genome_accession} due to {e}",
+                    no_assembly_genomes,
                 )
-                logging.debug(message)
-                no_assembly_genomes.append([genome_accession, message])
-                logging.debug("Skipping")
                 continue
             logging.debug(
                 f"Successful. Genome {genome_accession} sample accession is {genome_sample}"
@@ -65,16 +62,18 @@ def main(input_file, output_file, no_assembly_file):
                     genome_sample
                 )
             except requests.exceptions.RequestException as e:
-                message = f"Unable to get genome sample XML for {genome_sample} due to: {e}"
-                logging.debug(message)
-                no_assembly_genomes.append([genome_accession, message])
-                logging.debug("Skipping")
+                log_skipped_genome(
+                    genome_accession,
+                    f"Unable to get genome sample XML for {genome_sample} due to: {e}",
+                    no_assembly_genomes,
+                )
                 continue
             except (KeyError, ValueError) as e:
-                message = f"Failed to parse XML for {genome_sample} due to: {e}"
-                logging.debug(message)
-                no_assembly_genomes.append([genome_accession, message])
-                logging.debug("Skipping")
+                log_skipped_genome(
+                    genome_accession,
+                    f"Failed to parse XML for {genome_sample} due to: {e}",
+                    no_assembly_genomes,
+                )
                 continue
             if not derived_from_samples:
                 logging.debug("Failed to find sample accessions in the 'derived from' attribute")
@@ -86,15 +85,14 @@ def main(input_file, output_file, no_assembly_file):
                     if not derived_from_samples:
                         raise ValueError("No sample accessions found in run metadata")
                 except (requests.exceptions.RequestException, KeyError, ValueError) as e:
-                    message = (
-                        f"Unable to find sample accessions from runs for {genome_sample} due to {e}"
+                    log_skipped_genome(
+                        genome_accession,
+                        f"Unable to find sample accessions from runs for {genome_sample} due to {e}",
+                        no_assembly_genomes,
                     )
-                    logging.debug(message)
-                    no_assembly_genomes.append([genome_accession, message])
-                    logging.debug("Skipping")
                     continue
             logging.debug(
-                f"The following sample accessions were found: {','.join(derived_from_samples)}"
+                f"The following sample accessions were found: {comma_separate(derived_from_samples)}"
             )
             # TODO sometimes for ERZ genomes runs refrences are included in the analysis XML
             # look for runs in the assembly XML if genome is an assembly
@@ -105,19 +103,20 @@ def main(input_file, output_file, no_assembly_file):
                 )
 
             logging.debug(
-                f"Find all primary metagenomic assemblies linked to the samples {','.join(derived_from_samples)}"
+                f"Find all primary metagenomic assemblies linked to the samples {comma_separate(derived_from_samples)}"
             )
             primary_assemblies, assembly2runs = get_primary_assemblies_from_sample(
                 derived_from_samples
             )
             if not primary_assemblies:  # cases when primary assembly was not uploaded to ENA
-                message = f"There are no assemblies for 'derived from' samples {','.join(derived_from_samples)}"
-                logging.debug(message)
-                no_assembly_genomes.append([genome_accession, message])
-                logging.debug("Skipping")
+                log_skipped_genome(
+                    genome_accession,
+                    f"There are no assemblies for 'derived from' samples {comma_separate(derived_from_samples)}",
+                    no_assembly_genomes,
+                )
                 continue
             logging.debug(
-                f"Successful. The following primary assemblies were found {','.join(primary_assemblies)}"
+                f"Successful. The following primary assemblies were found {comma_separate(primary_assemblies)}"
             )
 
             if len(primary_assemblies) > 1 and derived_from_runs:
@@ -125,23 +124,26 @@ def main(input_file, output_file, no_assembly_file):
                     "Attempt to decrease the list of assemblies by filtering assemblies "
                     "generated from the runs other than genome's runs"
                 )
-                for assembly, run in assembly2runs.items():
-                    if run and {run} != set(derived_from_runs):
+                for assembly, runs in assembly2runs.items():
+                    if runs and runs != set(derived_from_runs):
                         primary_assemblies.remove(assembly)
                 if not primary_assemblies:
-                    message = f"There are no assemblies with similar runs for 'derived from' sample {','.join(derived_from_samples)}"
-                    logging.debug(message)
-                    no_assembly_genomes.append([genome_accession, message])
-                    logging.debug("Skipping")
+                    log_skipped_genome(
+                        genome_accession,
+                        f"There are no assemblies with similar runs for 'derived from' sample {comma_separate(derived_from_samples)}",
+                        no_assembly_genomes,
+                    )
                     continue
-                logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies)}")
+                logging.debug(f"Updated list of assemblies: {comma_separate(primary_assemblies)}")
 
             if primary_assemblies:
-                genome_assembly_pairs.append([genome_accession, ",".join(primary_assemblies)])
+                genome_assembly_pairs.append([genome_accession, comma_separate(primary_assemblies)])
             else:
-                message = f"No primary assemblies found for 'derived from' samples {','.join(derived_from_samples)}"
-                logging.debug(message)
-                no_assembly_genomes.append([genome_accession, message])
+                log_skipped_genome(
+                    genome_accession,
+                    f"No primary assemblies found for 'derived from' samples {comma_separate(derived_from_samples)}",
+                    no_assembly_genomes,
+                )
 
     logging.debug("Write list of assemblies to the output file")
     with open(output_file, "w") as file_out:
@@ -156,6 +158,12 @@ def main(input_file, output_file, no_assembly_file):
             writer.writerow(line)
 
 
+def log_skipped_genome(genome_accession: str, message: str, log_list: list) -> None:
+    logging.debug(message)
+    log_list.append([genome_accession, message])
+    logging.debug("Skipping")
+
+
 def find_genome_sample_in_ena(genome_accession: str) -> str:
     """
     Given a genome accession (ERZ, GCA, wgsSet), retrieve its metadata from ENA portal
@@ -166,7 +174,7 @@ def find_genome_sample_in_ena(genome_accession: str) -> str:
             f"{genome_accession} is an ENA analysis or genome accession, "
             f"retrieving metadata in XML from ENA portal"
         )
-        genome_ena_data = load_data(genome_accession, type="xml")
+        genome_ena_data = load_data(genome_accession, endpoint_type="xml")
         accession_type = "ANALYSIS" if genome_accession.startswith("ERZ") else "ASSEMBLY"
         sample = genome_ena_data[f"{accession_type}_SET"][f"{accession_type}"]["SAMPLE_REF"][
             "IDENTIFIERS"
@@ -176,7 +184,7 @@ def find_genome_sample_in_ena(genome_accession: str) -> str:
         logging.debug(
             f"{genome_accession} is an ENA WGS set accession, retrieving summary from ENA portal"
         )
-        genome_ena_data = load_data(genome_accession, type="summary")
+        genome_ena_data = load_data(genome_accession, endpoint_type="summary")
         return genome_ena_data["summaries"][0]["sample"]
 
 
@@ -189,7 +197,7 @@ def find_derived_from_sample_in_ena(genome_sample: str) -> tuple:
     If neither is found, raise a ValueError.
     """
     logging.debug(f"Retrieving metadata in XML for accession {genome_sample} from ENA portal")
-    sample_data = load_data(genome_sample, type="xml")
+    sample_data = load_data(genome_sample, endpoint_type="xml")
     sample_attributes = sample_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"]["SAMPLE_ATTRIBUTE"]
     logging.debug("Parsing sample attributes in XML metadata")
     derived_from_samples = []
@@ -238,12 +246,11 @@ def get_primary_assemblies_from_sample(sample_accessions: list) -> tuple:
 
         for row in reader:
             assembly_accession = row["analysis_accession"]
-            # TODO what if it's a co assembly?
-            run_accession = row["run_accession"]
+            run_accessions = set(row["run_accession"].split(","))
             primary_assemblies.append(assembly_accession)
-            assembly2runs[assembly_accession] = run_accession
+            assembly2runs[assembly_accession] = run_accessions
 
-    return primary_assemblies, assembly2runs
+    return sorted(primary_assemblies), assembly2runs
 
 
 def genbank_to_ena_wgsset_accession(genome_accession: str) -> Optional[str]:
@@ -251,7 +258,7 @@ def genbank_to_ena_wgsset_accession(genome_accession: str) -> Optional[str]:
     Convert a GenBank WGS accession (GCA) to the corresponding ENA WGS set accession (wgsSet).
     """
     try:
-        summary_data = load_data(genome_accession, type="summary")
+        summary_data = load_data(genome_accession, endpoint_type="summary")
         ena_accession = summary_data["summaries"][0]["wgsSet"]
         return ena_accession
     except (requests.exceptions.RequestException, KeyError, ValueError) as e:
@@ -261,26 +268,27 @@ def genbank_to_ena_wgsset_accession(genome_accession: str) -> Optional[str]:
         return None
 
 
-def load_data(accession: str, type: str) -> dict:
+def load_data(accession: str, endpoint_type: str) -> dict:
     """
-    Make a request to ENA portal xml or summary endpoint
-    to retrieve metadata for a given accession and returns
-    the metadata parsed as a dictionary.
+    Retrieve metadata for a given ENA accession from XML or summary endpoints.
+
     :param accession: ENA accession
-    :param type: api endpoint to use, either 'xml' or 'summary'
+    :param endpoint_type: 'xml' or 'summary' indicating the API endpoint to use
+    :return: Metadata as a dictionary
     """
-    url = f"https://www.ebi.ac.uk/ena/browser/api/{type}/{accession}"
+    url = f"https://www.ebi.ac.uk/ena/browser/api/{endpoint_type}/{accession}"
     try:
-        request = run_browser_request(url)
-        if type == "xml":
-            data_dict = xmltodict.parse(request.content)
-            return json.loads(json.dumps(data_dict))
-        elif type == "summary":
-            return request.json()
+        response = run_browser_request(url)
+        if endpoint_type == "xml":
+            return xmltodict.parse(response.content)
+        elif endpoint_type == "summary":
+            return response.json()
         else:
-            raise ValueError(f"Unsupported type '{type}'. Must be 'xml' or 'summary'.")
+            raise ValueError(
+                f"Unsupported endpoint_type '{endpoint_type}'. Must be 'xml' or 'summary'."
+            )
     except requests.exceptions.RequestException as e:
-        logging.error(f"{accession} Unable to request page content from URL {url} due to: {e}")
+        logging.error(f"{accession} unable to request content from {url}: {e}")
         raise
 
 
@@ -291,7 +299,7 @@ def collect_samples_from_runs_metadata(runs: list) -> list:
     """
     samples = []
     for run in runs:
-        run_data = load_data(run, "xml")
+        run_data = load_data(run, endpoint_type="xml")
         for link in run_data["RUN_SET"]["RUN"]["RUN_LINKS"]["RUN_LINK"]:
             if link["XREF_LINK"]["DB"] == "ENA-SAMPLE":
                 sample = link["XREF_LINK"]["ID"]
@@ -356,17 +364,17 @@ def custom_retry(max_retries=3, delay=10, backoff=1.5):
 @custom_retry(max_retries=5, delay=15, backoff=1.5)
 def run_browser_request(url):
     """Run a GET request to the ENA browser API."""
-    request = requests.get(url)
-    request.raise_for_status()
-    return request
+    response = requests.get(url)
+    response.raise_for_status()
+    return response
 
 
 @custom_retry(max_retries=5, delay=15, backoff=1.5)
 def run_request(query, api_endpoint):
     """Run a GET request to the ENA search API with given query parameters."""
-    request = requests.get(api_endpoint, params=urllib.parse.urlencode(query))
-    request.raise_for_status()
-    return request
+    response = requests.get(api_endpoint, params=query)
+    response.raise_for_status()
+    return response
 
 
 def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
@@ -399,6 +407,11 @@ def count_lines(path) -> int:
     with open(path) as f:
         n_lines = sum(1 for _ in f)
     return n_lines
+
+
+def comma_separate(items: list) -> str:
+    """Convert a list of items into a comma-separated string."""
+    return ",".join(items)
 
 
 def parse_args():
