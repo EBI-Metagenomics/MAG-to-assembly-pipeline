@@ -6,35 +6,16 @@ import csv
 import json
 import logging
 import re
+import time
 import urllib.parse
+from functools import wraps
 
 import requests
 import xmltodict
-from retry import retry
 from tqdm import tqdm
 
 # TODO add docs for functions and Type Annotations
 # TODO look for primary assemblies even if bin sample is bio sample?
-
-
-def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
-    log_level = logging.DEBUG if debug else logging.INFO
-
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler()],
-    )
-
-    error_handler = logging.FileHandler(error_logfile)
-    error_handler.setLevel(logging.ERROR)
-    simple_error_formatter = logging.Formatter("%(message)s")
-    error_handler.setFormatter(simple_error_formatter)
-    logging.getLogger().addHandler(error_handler)
-
-    # Reduce logging for noisy libraries
-    for noisy_lib in ["requests", "urllib", "urllib3"]:
-        logging.getLogger(noisy_lib).setLevel(logging.WARNING)
 
 
 def main(input_file, output_file, no_assembly_file):
@@ -43,7 +24,7 @@ def main(input_file, output_file, no_assembly_file):
 
     with open(input_file, "r") as file_in:
         reader = csv.reader(file_in)
-        for row in tqdm(reader):
+        for row in tqdm(reader, total=count_lines(input_file), desc="Processed genomes"):
             genome_accession = row[0].strip()
             if genome_accession[:3] not in ["ERZ", "GCA"]:
                 genome_accession = genome_accession.rstrip("0")  # CAMPAA010000000 -> CAMPAA01
@@ -168,16 +149,18 @@ def find_genome_sample_in_ena(genome_accession):
             )
             genome_ena_data = load_data(genome_accession, type="xml")
             accession_type = "ANALYSIS" if genome_accession.startswith("ERZ") else "ASSEMBLY"
-            return genome_ena_data[f"{accession_type}_SET"][f"{accession_type}"]["SAMPLE_REF"][
+            sample = genome_ena_data[f"{accession_type}_SET"][f"{accession_type}"]["SAMPLE_REF"][
                 "IDENTIFIERS"
             ]["PRIMARY_ID"]
+            return sample
         else:
             logging.debug(
                 f"{genome_accession} is an ENA WGS set accession, retrieving summary from ENA portal"
             )
             genome_ena_data = load_data(genome_accession, type="summary")
             return genome_ena_data["summaries"][0]["sample"]
-    except Exception as e:
+    # TODO are those good exceptions to catch?
+    except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
         logging.debug(f"Failed to fetch sample accession for {genome_accession} due to {e}")
         return None
 
@@ -185,8 +168,8 @@ def find_genome_sample_in_ena(genome_accession):
 def find_root_sample_and_run_in_ena(genome_sample):
     try:
         logging.debug(f"Retrieving metadata in XML for accession {genome_sample} from ENA portal")
-        sample_ena_data = load_data(genome_sample, type="xml")
-        sample_attributes = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"][
+        sample_data = load_data(genome_sample, type="xml")
+        sample_attributes = sample_data["SAMPLE_SET"]["SAMPLE"]["SAMPLE_ATTRIBUTES"][
             "SAMPLE_ATTRIBUTE"
         ]
         logging.debug("Parsing sample attributes in XML metadata")
@@ -194,10 +177,12 @@ def find_root_sample_and_run_in_ena(genome_sample):
         if not derived_from_runs and not derived_from_samples:
             logging.debug(f"No 'derived from' attribute in XML of {genome_sample}")
             return None, None, None
-    except Exception as e:
-        logging.info(
-            f"Unable to get genome sample XML or parse its attributes for {genome_sample} due to: {e}"
-        )
+    except requests.exceptions.RequestException as e:
+        logging.info(f"Unable to get genome sample XML for {genome_sample}: {e}")
+        return None, None, None
+
+    except (KeyError, ValueError, TypeError) as e:
+        logging.info(f"Failed to parse XML for {genome_sample}: {e}")
         return None, None, None
 
     derived_from = derived_from_samples if derived_from_samples else derived_from_runs
@@ -210,7 +195,7 @@ def find_root_sample_and_run_in_ena(genome_sample):
     if not derived_from_runs:
         logging.debug("Look for runs accessions in the bin sample metadata <DESCRIPTION> fiesld")
         try:
-            description = sample_ena_data["SAMPLE_SET"]["SAMPLE"]["DESCRIPTION"]
+            description = sample_data["SAMPLE_SET"]["SAMPLE"]["DESCRIPTION"]
             derived_from_runs = get_run_ids_from_description(description)
             if derived_from_runs:
                 logging.debug(
@@ -241,8 +226,10 @@ def find_root_sample_and_run_in_ena(genome_sample):
                     f"No sample accessions found for run(s) {','.join(derived_from_runs)}"
                 )
                 return derived_from, None, derived_from_runs
-        except Exception:
-            logging.debug(f"unable to find root sample from run accession for {genome_sample}")
+        except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
+            logging.debug(
+                f"Unable to find root sample from run accession for {genome_sample} due to {e}"
+            )
             return derived_from, None, derived_from_runs
 
     return derived_from, derived_from_samples, derived_from_runs
@@ -270,7 +257,7 @@ def get_primary_assemblies_from_sample(sample_accessions):
 
         for row in reader:
             assembly_accession = row["analysis_accession"]
-            # TODO what if it's co assembly?
+            # TODO what if it's a co assembly?
             run_accession = row["run_accession"]
             primary_assemblies.append(assembly_accession)
             assembly2runs[assembly_accession] = run_accession
@@ -298,8 +285,10 @@ def genbank_to_ena_wgsset_accession(genome_accession):
         summary_data = load_data(genome_accession, type="summary")
         ena_accession = summary_data["summaries"][0]["wgsSet"]
         return ena_accession
-    except Exception:
-        logging.info(f"Unable to convert NCBI accession {genome_accession} to wgsSet accession")
+    except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
+        logging.info(
+            f"Unable to convert NCBI accession {genome_accession} to wgsSet accession due to {e}"
+        )
         return None
 
 
@@ -312,9 +301,9 @@ def load_data(accession, type):
             return json.loads(json.dumps(data_dict))
         elif type == "summary":
             return request.json()
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         logging.error(f"{accession} Unable to request page content from URL {url} due to: {e}")
-        return None
+        raise
 
 
 def parse_derived_from_attribute(attributes):
@@ -364,18 +353,105 @@ def get_run_ids_from_description(description):
     return unfolded_accessions
 
 
-@retry(tries=5, delay=15, backoff=1.5)
+def custom_retry(max_retries=3, delay=10, backoff=1.5):
+    """Retry decorator with special handling for 404 errors.
+    - 404: retry only once
+    - Other errors: retry up to max_retries with backoff
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            current_delay = delay
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except requests.exceptions.HTTPError as e:
+                    status = e.response.status_code
+                    attempt += 1
+
+                    if status == 404:
+                        if attempt > 1:
+                            logging.error(f"404 Not Found, giving up after {attempt} attempt(s).")
+                            raise
+                        logging.warning(
+                            f"404 Not Found, retrying once in {current_delay} seconds..."
+                        )
+                        time.sleep(current_delay)
+                        continue
+
+                    else:
+                        if attempt > max_retries:
+                            logging.error(
+                                f"HTTP error {status}, giving up after {attempt} attempts."
+                            )
+                            raise
+                        logging.warning(
+                            f"HTTP error {status}, retrying in {current_delay:.1f} seconds..."
+                        )
+                        time.sleep(current_delay)
+                        current_delay *= backoff
+
+                except requests.exceptions.RequestException as e:
+                    attempt += 1
+                    if attempt > max_retries:
+                        logging.error(f"Request failed, giving up after {attempt} attempts: {e}")
+                        raise
+                    logging.warning(
+                        f"Request failed: {e}, retrying in {current_delay:.1f} seconds..."
+                    )
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+
+        return wrapper
+
+    return decorator
+
+
+@custom_retry(max_retries=5, delay=15, backoff=1.5)
 def run_browser_request(url):
     request = requests.get(url)
     request.raise_for_status()
     return request
 
 
-@retry(tries=5, delay=15, backoff=1.5)
+@custom_retry(max_retries=5, delay=15, backoff=1.5)
 def run_request(query, api_endpoint):
     request = requests.get(api_endpoint, params=urllib.parse.urlencode(query))
     request.raise_for_status()
     return request
+
+
+def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
+    """
+    Set up logging configuration.
+    :param debug: If True, set logging level to DEBUG, otherwise to INFO
+    :param error_logfile: Path to the file where errors appearing during fasta download will be logged
+    """
+    log_level = logging.DEBUG if debug else logging.INFO
+
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler()],
+    )
+
+    error_handler = logging.FileHandler(error_logfile)
+    error_handler.setLevel(logging.ERROR)
+    simple_error_formatter = logging.Formatter("%(message)s")
+    error_handler.setFormatter(simple_error_formatter)
+    logging.getLogger().addHandler(error_handler)
+
+    # Reduce logging for noisy libraries
+    for noisy_lib in ["requests", "urllib", "urllib3"]:
+        logging.getLogger(noisy_lib).setLevel(logging.WARNING)
+
+
+def count_lines(path):
+    """Return the number of lines in a text file."""
+    with open(path) as f:
+        return sum(1 for _ in f)
 
 
 def parse_args():
