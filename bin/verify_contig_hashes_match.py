@@ -29,7 +29,7 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
         for row in reader:
             genome = row[0]
             assemblies = row[1].split(",")
-            logging.debug(f"Start processing of genome {genome}")
+            logging.info(f"Start processing of genome {genome}")
             logging.debug("Verify retrieved assemblies using comparason of contigs' hashes")
             mag_hashes = handle_fasta_processing(genome, download_folder, write_cache=False)
             if not mag_hashes:
@@ -51,7 +51,6 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
                     )
                     continue
                 logging.debug("Assembly hashes were computed")
-                # TODO modify to avoid matching empty file hashes
                 if mag_hashes.issubset(assembly_hashes):
                     logging.debug(
                         f"Assembly {assembly} is confirmed to be primary assembly for the genome {genome}"
@@ -65,9 +64,12 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
             logging.debug("Comparason finished")
 
             if confirmed_assemblies:
+                logging.info(
+                    f"Genome {genome} has been validated to originate from assemblies: {','.join(confirmed_assemblies)}"
+                )
                 validated_pairs.append([genome, ",".join(confirmed_assemblies)])
             else:
-                logging.debug(
+                logging.info(
                     f"Genome {genome} does not have any assemblies with matching contig hashes"
                 )
                 invalid_pairs.append(
@@ -77,13 +79,17 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
                     ]
                 )
 
-    logging.debug("Writing results to the output file")
+    logging.debug(
+        f"Writing validated genome - assembly pairs to the output file {output_verified_file}"
+    )
     with open(output_verified_file, "w") as out:
         writer = csv.writer(out, delimiter="\t")
         for line in validated_pairs:
             writer.writerow(line)
 
-    logging.debug("Writing errors to the errors file")
+    logging.debug(
+        f"Writing invalid genome - assembly pairs to the output file {output_invalid_file}"
+    )
     with open(output_invalid_file, "w") as out:
         writer = csv.writer(out, delimiter="\t")
         for line in invalid_pairs:
@@ -99,6 +105,9 @@ def handle_fasta_processing(
 ) -> Optional[set]:
     """
     Downloads fasta file for the given accession, using different approaches depending on the accession type.
+    ERZ analysis accessions are downloaded using ENA FIRE API (fastest and most reliable method, only works for ERZ).
+    WGS set accessions are downloaded using ENA FTP links (less reliable method).
+    GCA accessions are downloaded using ENA fasta download API (least reliable, but the only good way to download GCA).
     Then computes and returns set of md5 hashes of contigs.
     If the file is already downloaded and cached, it reads hashes from the cache.
 
@@ -113,7 +122,7 @@ def handle_fasta_processing(
 
     try:
         outpath = download_folder / f"{accession}.fa.gz"
-        cache_path = download_folder / f"{accession}.fa.hash"
+        cache_path = download_folder / f"{accession}.hash"
         if (outpath.exists() and outpath.stat().st_size != 0) or (
             cache_path.exists() and cache_path.stat().st_size != 0
         ):
@@ -124,8 +133,6 @@ def handle_fasta_processing(
             # so we try to download from generated_ftp first, then from submitted_ftp
             try:
                 fasta_file = download_from_ENA_FIRE(accession, "generated_ftp", outpath)
-                if fasta_file is None:
-                    raise ValueError("Empty URL or empty file in 'generated_ftp'")
                 return compute_hashes(fasta_file, write_cache=write_cache)
             except (gzip.BadGzipFile, ClientError, ParamValidationError, ValueError) as e:
                 logging.error(
@@ -133,8 +140,6 @@ def handle_fasta_processing(
                 )
                 logging.debug('Retry with "submitted_ftp"')
                 fasta_file = download_from_ENA_FIRE(accession, "submitted_ftp", outpath)
-                if fasta_file is None:
-                    raise ValueError("Empty URL or empty file in 'submitted_ftp'")
                 return compute_hashes(fasta_file, write_cache=write_cache)
 
         elif accession.startswith("GCA"):
@@ -158,7 +163,7 @@ def handle_fasta_processing(
         return None
 
 
-def compute_hashes(file_path, write_cache=True, delete_fasta=True, cache_dir=None):
+def compute_hashes(file_path, write_cache=True, delete_fasta=True, cache_dir=None) -> set:
     """
     Computes md5 hashes of sequences in a fasta file. Creates a cache file with hashes if write_cache is True.
     If the cache file already exists, reads hashes from it.
