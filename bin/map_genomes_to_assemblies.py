@@ -11,7 +11,6 @@ from typing import Optional
 
 import requests
 import xmltodict
-from tqdm import tqdm
 
 # TODO look for primary assemblies even if bin sample is bio sample?
 
@@ -34,7 +33,7 @@ def main(input_file, output_file, no_assembly_file):
 
     with open(input_file, "r") as file_in:
         reader = csv.reader(file_in)
-        for row in tqdm(reader, total=count_lines(input_file), desc="Processed genomes"):
+        for row in reader:
             genome_accession = row[0].strip()
             if genome_accession[:3] not in ["ERZ", "GCA"]:
                 genome_accession = genome_accession.rstrip("0")  # CAMPAA010000000 -> CAMPAA01
@@ -94,7 +93,7 @@ def main(input_file, output_file, no_assembly_file):
             logging.debug(
                 f"The following sample accessions were found: {comma_separate(derived_from_samples)}"
             )
-            # TODO sometimes for ERZ genomes runs refrences are included in the analysis XML
+            # TODO sometimes for ERZ genomes runs references are included in the analysis XML
             # look for runs in the assembly XML if genome is an assembly
             if not derived_from_runs:
                 logging.debug(
@@ -145,13 +144,13 @@ def main(input_file, output_file, no_assembly_file):
                     no_assembly_genomes,
                 )
 
-    logging.debug("Write list of assemblies to the output file")
+    logging.debug(f"Write list of identified assemblies to the file {output_file}")
     with open(output_file, "w") as file_out:
         writer = csv.writer(file_out, delimiter="\t")
         for line in genome_assembly_pairs:
             writer.writerow(line)
 
-    logging.debug("Write errors to the error file")
+    logging.debug(f"Write list of genomes with no assembly found to the file {no_assembly_file}")
     with open(no_assembly_file, "w") as file_out:
         writer = csv.writer(file_out, delimiter="\t")
         for line in no_assembly_genomes:
@@ -398,13 +397,6 @@ def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
     # Reduce logging for noisy libraries
     for noisy_lib in ["requests", "urllib", "urllib3"]:
         logging.getLogger(noisy_lib).setLevel(logging.WARNING)
-
-
-def count_lines(path) -> int:
-    """Return the number of lines in a text file."""
-    with open(path) as f:
-        n_lines = sum(1 for _ in f)
-    return n_lines
 
 
 def comma_separate(items: list) -> str:
