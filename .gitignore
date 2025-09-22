@@ -4,3 +4,5 @@ bin/__pycache__
 .nextflow.log*
 .nf-test*
 .vscode*
+debug/*
+node_modules/*
