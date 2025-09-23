@@ -36,4 +36,4 @@ jobs:
 
       - name: Run the nf-test
         run: |
-          nf-test test --ci --verbose
+          nf-test test --ci --verbose --profile test_local
