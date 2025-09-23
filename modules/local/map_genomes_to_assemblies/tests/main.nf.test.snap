@@ -7,7 +7,7 @@
                         {
                             "id": "batch.1"
                         },
-                        "batch.1.mapped_pairs.tsv:md5,99dac922828be77a7120f3f42c313af5"
+                        "batch.1.mapped_pairs.tsv:md5,e8b03e6cbbb6c40cf77e406c16d9cb90"
                     ],
                     [
                         {
@@ -17,7 +17,7 @@
                     ]
                 ],
                 "1": [
-                    "batch.1.no_assembly.tsv:md5,26e7ccff15d5be570607633b3fd27682",
+                    "batch.1.no_assembly.tsv:md5,cc9b64c33db3e9005ab2cd5c31d13b85",
                     "batch.2.no_assembly.tsv:md5,e533757a0bf459952f63cfc075c7ff8c"
                 ],
                 "2": [
@@ -29,7 +29,7 @@
                     "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
                 ],
                 "no_assembly_found": [
-                    "batch.1.no_assembly.tsv:md5,26e7ccff15d5be570607633b3fd27682",
+                    "batch.1.no_assembly.tsv:md5,cc9b64c33db3e9005ab2cd5c31d13b85",
                     "batch.2.no_assembly.tsv:md5,e533757a0bf459952f63cfc075c7ff8c"
                 ],
                 "tsv_mapping": [
@@ -37,7 +37,7 @@
                         {
                             "id": "batch.1"
                         },
-                        "batch.1.mapped_pairs.tsv:md5,99dac922828be77a7120f3f42c313af5"
+                        "batch.1.mapped_pairs.tsv:md5,e8b03e6cbbb6c40cf77e406c16d9cb90"
                     ],
                     [
                         {
@@ -52,7 +52,7 @@
             "nf-test": "0.9.0",
             "nextflow": "25.04.1"
         },
-        "timestamp": "2025-09-12T16:37:33.124045"
+        "timestamp": "2025-09-23T13:53:33.206621"
     },
     "Find assemblies for the test list of accessions - stub": {
         "content": [

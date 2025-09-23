@@ -123,7 +123,11 @@ def main(input_file, output_file, no_assembly_file):
                     "Attempt to decrease the list of assemblies by filtering assemblies "
                     "generated from the runs other than genome's runs"
                 )
+                logging.debug(
+                    f"Genome {genome_accession} runs are {comma_separate(derived_from_runs)}"
+                )
                 for assembly, runs in assembly2runs.items():
+                    logging.debug(f"Assembly {assembly} runs are {comma_separate(runs)}")
                     if runs and runs != set(derived_from_runs):
                         primary_assemblies.remove(assembly)
                 if not primary_assemblies:
@@ -243,7 +247,7 @@ def get_primary_assemblies_from_sample(sample_accessions: list) -> tuple:
 
         for row in reader:
             assembly_accession = row["analysis_accession"]
-            run_accessions = set(row["run_accession"].split(","))
+            run_accessions = set(row["run_accession"].split(";")) if row["run_accession"] else set()
             primary_assemblies.append(assembly_accession)
             assembly2runs[assembly_accession] = run_accessions
 
