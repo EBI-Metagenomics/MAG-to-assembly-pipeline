@@ -78,6 +78,7 @@ def download_from_ENA_FIRE(accession: str, analysis_ftp_field: str, outpath: Pat
     return check_if_empty_gz(outpath)
 
 
+@retry((ValueError), tries=7, delay=15, backoff=2)
 def download_from_ENA_API(accession: str, outpath: Path) -> Path:
     """
     Download the fasta file for a given genome accession using the ENA API.
@@ -95,7 +96,7 @@ def download_from_ENA_API(accession: str, outpath: Path) -> Path:
     return check_if_empty_gz(outpath)
 
 
-@retry((error_temp, error_reply, error_proto, error_perm), tries=8, delay=10, backoff=3)
+@retry((OSError, error_temp, error_reply, error_proto, error_perm), tries=8, delay=10, backoff=3)
 def download_from_ENA_FTP(accession: str, outpath: Path) -> Path:
     """
     Download the fasta file for a given ENA genome accession using the ENA FTP.
@@ -174,7 +175,7 @@ def check_if_empty_gz(file_path: Path) -> Path:
     raise ValueError(f"Downloaded file {file_path} has zero size.")
 
 
-@retry(tries=7, delay=15, backoff=2)
+@retry(tries=5, delay=15, backoff=1.5)
 def run_request(query, api_endpoint):
     """Run a GET request to the ENA search API with given query parameters."""
     response = requests.get(api_endpoint, params=query)
