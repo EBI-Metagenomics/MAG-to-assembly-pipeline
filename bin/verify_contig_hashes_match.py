@@ -10,7 +10,6 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-import requests
 from Bio import SeqIO
 from botocore.exceptions import ClientError, ParamValidationError
 from download_fasta_utils import (
@@ -45,7 +44,7 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
                     assembly, download_folder, write_cache=True
                 )
                 if not assembly_hashes:
-                    # TODO: think if this case should be considered as an error
+                    # TODO: think how to handle the case when we cannot download assembly fasta and validate
                     logging.info(
                         f"For the genome {genome} failed to download primary assembly {assembly} fasta file"
                     )
@@ -148,16 +147,7 @@ def handle_fasta_processing(
 
         else:
             fasta_file = download_from_ENA_FTP(accession, outpath)
-            if fasta_file is None:
-                raise ValueError("Empty URL or empty file")
             return compute_hashes(fasta_file, write_cache=write_cache)
-
-    except requests.HTTPError as e:
-        status_code = e.response.status_code if e.response else "?"
-        reason = e.response.reason if e.response else "?"
-        logging.error(f"{accession} HTTP Error while downloading: {status_code} - {reason}")
-        return None
-    # TODO: remove or handle more specific exceptions if needed
     except Exception as e:
         logging.error(f"{accession} Failed to process fasta file due to: {e}")
         return None
