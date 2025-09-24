@@ -1,4 +1,5 @@
 import csv
+import gzip
 import logging
 import shutil
 from ftplib import FTP, error_perm, error_proto, error_reply, error_temp
@@ -117,15 +118,20 @@ def download_from_ENA_FTP(accession: str, outpath: Path) -> Path:
     return check_if_empty_gz(outpath)
 
 
-def download_from_NCBI_datasets(accession: str, download_folder: Path) -> Path:
+def download_from_NCBI_datasets(
+    accession: str, download_folder: Path, compress: bool = False
+) -> Path:
     """
     Download the assembly fasta file for a given NCBI genome accession using NCBI datasets.
     This function is a workaround, only to be used if other methods fail.
     :param accession: NCBI genome accession (GCA)
     :param download_folder: Path to the folder where the fasta file will be saved
+    :param compress: Whether to gzip the output fasta file
     :return: Path to the downloaded fasta file
     """
-    outpath = download_folder / f"{accession}.fa"
+    outpath = (
+        download_folder / f"{accession}.fa.gz" if compress else download_folder / f"{accession}.fa"
+    )
     accession_version = accession if "." in accession else accession + ".1"
     api_endpoint = (
         f"https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/"
@@ -134,13 +140,12 @@ def download_from_NCBI_datasets(accession: str, download_folder: Path) -> Path:
     query = {"include_annotation_type": "GENOME_FASTA"}
     response = run_request(query, api_endpoint)
 
-    content = response.read()
     tmp_archive_path = download_folder / "ncbi_tmp.zip"
     tmp_extract_path = download_folder / "ncbi_tmp"
 
-    tmp_archive_path.write_bytes(content)
+    tmp_archive_path.write_bytes(response.content)
 
-    shutil.unpack_archive(str(tmp_archive_path), str(tmp_extract_path))
+    shutil.unpack_archive(tmp_archive_path, tmp_extract_path)
 
     subdir_path = tmp_extract_path / f"ncbi_dataset/data/{accession_version}"
     source_files = list(subdir_path.glob("*_genomic.fna"))
@@ -149,12 +154,16 @@ def download_from_NCBI_datasets(accession: str, download_folder: Path) -> Path:
         raise FileNotFoundError(f"No assembly fasta found in {subdir_path}")
 
     source_path = source_files[0]
-    shutil.move(str(source_path), str(outpath))
+    if compress:
+        with open(source_path, "rb") as src, gzip.open(outpath, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+    else:
+        shutil.move(source_path, outpath)
 
     tmp_archive_path.unlink()
     shutil.rmtree(tmp_extract_path)
 
-    if outpath.exists() and outpath.stat().st_size != 0:
+    if outpath.exists() and outpath.stat().st_size > 20:
         logging.debug(f"Successful. File saved to {outpath}")
         return outpath
     logging.debug(f"Downloaded file {outpath} has zero size. Removing the file.")
