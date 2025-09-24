@@ -14,10 +14,7 @@ from tqdm import tqdm
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        # logging.FileHandler(filename='script.log'),
-        logging.StreamHandler()
-    ],
+    handlers=[logging.StreamHandler()],
 )
 
 

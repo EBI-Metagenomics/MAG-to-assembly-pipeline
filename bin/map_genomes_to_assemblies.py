@@ -328,7 +328,7 @@ def custom_retry(max_retries=3, delay=10, backoff=1.5):
                     attempt += 1
                     if status == 404:
                         if attempt > 1:
-                            logging.error(f"404 Not Found, giving up after {attempt} attempt(s).")
+                            logging.warning(f"404 Not Found, giving up after {attempt} attempt(s).")
                             raise
                         logging.warning(
                             f"404 Not Found, retrying once in {current_delay} seconds..."
@@ -337,7 +337,7 @@ def custom_retry(max_retries=3, delay=10, backoff=1.5):
                         continue
                     else:
                         if attempt > max_retries:
-                            logging.error(
+                            logging.warning(
                                 f"HTTP error {status}, giving up after {attempt} attempts."
                             )
                             raise
@@ -349,7 +349,7 @@ def custom_retry(max_retries=3, delay=10, backoff=1.5):
                 except requests.exceptions.RequestException as e:
                     attempt += 1
                     if attempt > max_retries:
-                        logging.error(f"Request failed, giving up after {attempt} attempts: {e}")
+                        logging.warning(f"Request failed, giving up after {attempt} attempts: {e}")
                         raise
                     logging.warning(
                         f"Request failed: {e}, retrying in {current_delay:.1f} seconds..."
