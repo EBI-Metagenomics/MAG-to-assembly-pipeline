@@ -42,5 +42,5 @@ jobs:
         with:
           name: debug-outputs
           path: |
-            .nf-test/
-            nf-test.log
+            /home/runner/work/MAG-to-assembly-pipeline/MAG-to-assembly-pipeline/.nf-test/
+            /home/runner/work/MAG-to-assembly-pipeline/MAG-to-assembly-pipeline/nf-test.log
