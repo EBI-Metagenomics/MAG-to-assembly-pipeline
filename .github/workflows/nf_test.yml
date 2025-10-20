@@ -34,7 +34,7 @@ jobs:
 
       - name: Run the nf-test
         run: |
-          nf-test test --ci --verbose --profile test_local,docker --tag ci
+          nf-test test --verbose --profile test_local,docker --tag ci
 
       - name: Upload debug artifacts
         if: failure()
