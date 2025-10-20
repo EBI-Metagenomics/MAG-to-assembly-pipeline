@@ -148,17 +148,23 @@ def main(input_file, output_file, no_assembly_file):
                     no_assembly_genomes,
                 )
 
-    logging.debug(f"Write list of identified assemblies to the file {output_file}")
-    with open(output_file, "w") as file_out:
-        writer = csv.writer(file_out, delimiter="\t")
-        for line in genome_assembly_pairs:
-            writer.writerow(line)
+    if genome_assembly_pairs:
+        logging.debug(f"Write list of identified assemblies to the file {output_file}")
+        with open(output_file, "w") as file_out:
+            writer = csv.writer(file_out, delimiter="\t")
+            for line in genome_assembly_pairs:
+                writer.writerow(line)
 
-    logging.debug(f"Write list of genomes with no assembly found to the file {no_assembly_file}")
-    with open(no_assembly_file, "w") as file_out:
-        writer = csv.writer(file_out, delimiter="\t")
-        for line in no_assembly_genomes:
-            writer.writerow(line)
+    if no_assembly_genomes:
+        logging.debug(
+            f"Write list of genomes with no assembly found to the file {no_assembly_file}"
+        )
+        with open(no_assembly_file, "w") as file_out:
+            writer = csv.writer(file_out, delimiter="\t")
+            for line in no_assembly_genomes:
+                writer.writerow(line)
+
+    logging.info("Processing finished")
 
 
 def log_skipped_genome(genome_accession: str, message: str, log_list: list) -> None:
