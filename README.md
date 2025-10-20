@@ -42,14 +42,14 @@ The pipeline performs the following main steps:
    cd MAG-to-assembly-pipeline
    ```
 
-4. Run the pipeline with test data:
+4. Run the pipeline with test data on a MacOS machine using Docker containers:
 
    ```bash
    nextflow run main.nf \
      --input_accessions workflows/tests/data/input_accessions.tsv \
      --catalogues_metadata workflows/tests/data/all_catalog_metadata.tsv \
      --merge_with_results workflows/tests/data/mag_to_assembly_links.tsv \
-     -profile local
+     -profile docker,test,arm
    ```
 
 ## Usage
@@ -112,7 +112,9 @@ The pipeline generates the following outputs in the specified output directory:
 
 The pipeline comes with several configuration profiles:
 
-- `local`: For running on local MacOS machines
+- `local`: For running on local machines with limited resources
+- `test`: For running in the test mode
+- `arm`: For running on MacOS machines
 - `codon_slurm`: For running on SLURM clusters (specifically configured for Codon)
 - `docker`: For running with Docker containers
 - `singularity`: For running with Singularity containers
