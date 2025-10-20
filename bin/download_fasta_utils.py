@@ -51,7 +51,7 @@ def get_fasta_url(accession: str, analysis_ftp_field: str = "generated_ftp") -> 
     for row in reader:
         field_name = query[accession_type]["fields"]
         file_url = row[field_name].split(";")[0]  # Split to take the first FTP link if multiple
-        if file_url != "":
+        if file_url:
             return file_url
     raise ValueError(f"Empty string URL of the fasta file for accession {accession}")
 

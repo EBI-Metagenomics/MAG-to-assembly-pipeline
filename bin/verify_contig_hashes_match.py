@@ -60,7 +60,7 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
                         f"Assembly {assembly} is not a primary assembly for the genome {genome}"
                     )
                     not_confirmed_assemblies.append(assembly)
-            logging.debug("Comparason finished")
+            logging.debug("Comparison finished")
 
             if confirmed_assemblies:
                 logging.info(
