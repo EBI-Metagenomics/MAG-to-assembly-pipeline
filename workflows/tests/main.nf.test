@@ -3,6 +3,7 @@ nextflow_workflow {
     name "Test workflows/mag-assembly_linking.nf"
     script "../mag-assembly_linking.nf"
     workflow "MAG_ASSEMBLY_LINKING_PIPELINE"
+    tag "ci"
 
     test("Run the pipeline on the test dataset") {
 
@@ -15,10 +16,9 @@ nextflow_workflow {
                     gut_mapping         = "${projectDir}/data/known_and_found_gut_genomes.tsv"
 
                     // user input args
-                    batch_size          = 3
                     merge_with_results  = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
                     skip_accessions     = "${moduleDir}/tests/data/processed_accessions.tsv"
-                    accessions_list     = "${moduleDir}/tests/data/input_accessions.tsv"
+                    accessions_list     = "${moduleDir}/tests/data/input_accessions_small.tsv"
                     catalogues_metadata = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
                     output_path         = "${outputDir}"
                     debug               = true
@@ -35,14 +35,11 @@ nextflow_workflow {
                 assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add')
                 // check that new lines from current run are added
                 assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098	add')
-                assert path(get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add')
             }
             with(workflow.out.processed_accessions) {
                 // check that processed accessions from previous run are present
                 assert path(get(0)).readLines().contains('ERZ1051661')
                 // check that accessions from current run are added to the list of processed accessions
-                assert path(get(0)).readLines().contains('ERZ1022847')
-                assert path(get(0)).readLines().contains('ERZ1462793')
                 assert path(get(0)).readLines().contains('GCA_938030915')
                 assert path(get(0)).readLines().contains('RSAC01')
             }

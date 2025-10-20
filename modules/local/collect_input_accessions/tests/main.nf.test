@@ -3,6 +3,7 @@ nextflow_process {
     name "Test Process COLLECT_INPUT_ACCESSIONS"
     script "../main.nf"
     process "COLLECT_INPUT_ACCESSIONS"
+    tag "ci"
 
     test("Download MAG/bin accessions from ENA/MGnify and prepare the input") {
 
