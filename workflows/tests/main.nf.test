@@ -30,11 +30,11 @@ nextflow_workflow {
 
             with(workflow.out.mag_to_assembly_mapping) {
                 // check header
-                assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action')
+                assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep')
                 // check that line from previous table is present
-                assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add')
+                assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300')
                 // check that new lines from current run are added
-                assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098	add')
+                assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098')
             }
             with(workflow.out.processed_accessions) {
                 // check that processed accessions from previous run are present

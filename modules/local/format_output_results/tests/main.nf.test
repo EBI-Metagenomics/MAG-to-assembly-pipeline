@@ -22,11 +22,11 @@ nextflow_process {
             assertAll(
                 { assert process.success },
                 // Check that lines from previous table are present in the output
-                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action') },
-                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300') },
                 // Check that new lines from current run are added
-                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1694383	GCA_905170305	NA	NA	add') },
-                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1694383	GCA_905170305	NA	NA') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA') },
                 // Check that processed accessions from previous run are present
                 { assert path(process.out.processed_accessions.get(0)).readLines().contains('ERZ1051661') },
                 // Check that processed accessions from current run are added

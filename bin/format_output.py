@@ -42,9 +42,7 @@ def main(results, catalogue_metadata, previous_table):
         merged_df["Species_rep"] = None
         merged_df["Genome"] = None
 
-    merged_df["Action"] = "add"
-
-    result_df = merged_df[["Primary_assembly", "MAG_accession", "Genome", "Species_rep", "Action"]]
+    result_df = merged_df[["Primary_assembly", "MAG_accession", "Genome", "Species_rep"]]
 
     if previous_table and previous_table.stat().st_size != 0:
         previous_df = pd.read_csv(previous_table, sep="\t")
