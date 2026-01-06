@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 
-def main(results, catalogue_metadata, previous_table):
+def main(results: list, catalogue_metadata: Path, previous_table: Path, write_deleted: bool):
     df_list = []
     for file in results:
         try:
@@ -51,6 +51,10 @@ def main(results, catalogue_metadata, previous_table):
         ]
         result_df = pd.concat([unique_previous_df, result_df]).reset_index(drop=True)
 
+        if write_deleted:
+            deleted_output_file = generate_filename("mag_to_assembly_links_to_unlink")
+            unique_previous_df.to_csv(deleted_output_file, sep="\t", index=False)
+
     result_df.fillna("NA", inplace=True)
     output_file = generate_filename("mag_to_assembly_mapping")
     result_df.to_csv(output_file, sep="\t", index=False)
@@ -82,5 +86,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "results", metavar="FILE", nargs="+", help="Files with links produced by the main script"
     )
+    parser.add_argument(
+        "--write-deleted",
+        action="store_true",
+        help="If set, create a file listing MAG-to-assembly links that were in the previous table but not in the new results",
+    )
     args = parser.parse_args()
-    main(args.results, args.catalogue_metadata, args.previous_table)
+    main(args.results, args.catalogue_metadata, args.previous_table, args.write_deleted)
