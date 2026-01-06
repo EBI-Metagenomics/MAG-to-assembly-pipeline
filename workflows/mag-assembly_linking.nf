@@ -7,12 +7,12 @@ include { FORMAT_OUTPUT_RESULTS      } from '../modules/local/format_output_resu
 
 workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     main:
-        skip_accessions_ch = params.skip_accessions ? Channel.fromPath(params.skip_accessions, checkIfExists: true) : []
+        skip_accessions_ch = params.skip_accessions ? channel.fromPath(params.skip_accessions, checkIfExists: true) : []
 
         // If custom list of input accessions is provided, use it instead of the accessions collected from ENA and MGnify
         if (params.accessions_list) {
-            accessions_list_ch     = Channel.fromPath(params.accessions_list, checkIfExists: true)
-            catalogues_metadata_ch = params.catalogues_metadata ? Channel.fromPath(params.catalogues_metadata, checkIfExists: true) : []
+            accessions_list_ch     = channel.fromPath(params.accessions_list, checkIfExists: true)
+            catalogues_metadata_ch = params.catalogues_metadata ? channel.fromPath(params.catalogues_metadata, checkIfExists: true) : []
 
         // Otherwise, build list of input genomes from ENA bins and MAGs and MGnify catalogues
         } else {
@@ -41,10 +41,11 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
         no_assembly_genomes_ch = VERIFY_CONTIG_HASHES_MATCH.output.invalid_pairs
             .mix(MAP_GENOMES_TO_ASSEMBLIES.output.no_assembly_found)
             .collectFile(name: "no_assembly_genomes.tsv")
-        previous_results_ch = params.merge_with_results ? Channel.fromPath(params.merge_with_results) : []
+        previous_results_ch = params.merge_with_results ? channel.fromPath(params.merge_with_results) : []
 
         // Format output results: create a table with MAGs, their primary assemblies and MGYG accessions,
         // and update the list of processed accessions
+        // TODO Errors should be added here to avoid unlinking when there are failed verifications
         FORMAT_OUTPUT_RESULTS(
             mag_assembly_pairs_ch,
             no_assembly_genomes_ch,
