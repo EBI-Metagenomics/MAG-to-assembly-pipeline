@@ -7,9 +7,6 @@ nextflow_workflow {
     test("Run the pipeline on the test dataset") {
 
         when {
-            workflow {
-
-            }
             params {
                     // required files
                     gut_mapping         = "${projectDir}/data/known_and_found_gut_genomes.tsv"
@@ -20,7 +17,6 @@ nextflow_workflow {
                     accessions_list     = "${moduleDir}/tests/data/input_accessions_small.tsv"
                     catalogues_metadata = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
                     output_path         = "${outputDir}"
-                    debug               = true
             }
         }
 

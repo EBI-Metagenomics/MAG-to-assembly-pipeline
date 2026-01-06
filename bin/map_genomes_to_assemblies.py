@@ -91,7 +91,7 @@ def main(input_file, output_file, no_assembly_file):
                     )
                     continue
             logging.debug(
-                f"The following sample accessions were found: {comma_separate(derived_from_samples)}"
+                f"The following sample accessions were found: {','.join(derived_from_samples)}"
             )
             # TODO sometimes for ERZ genomes runs references are included in the analysis XML
             # look for runs in the assembly XML if genome is an assembly
@@ -102,7 +102,7 @@ def main(input_file, output_file, no_assembly_file):
                 )
 
             logging.debug(
-                f"Find all primary metagenomic assemblies linked to the samples {comma_separate(derived_from_samples)}"
+                f"Find all primary metagenomic assemblies linked to the samples {','.join(derived_from_samples)}"
             )
             primary_assemblies, assembly2runs = get_primary_assemblies_from_sample(
                 derived_from_samples
@@ -110,12 +110,12 @@ def main(input_file, output_file, no_assembly_file):
             if not primary_assemblies:  # cases when primary assembly was not uploaded to ENA
                 log_skipped_genome(
                     genome_accession,
-                    f"There are no assemblies for 'derived from' samples {comma_separate(derived_from_samples)}",
+                    f"There are no assemblies for 'derived from' samples {','.join(derived_from_samples)}",
                     no_assembly_genomes,
                 )
                 continue
             logging.debug(
-                f"Successful. The following primary assemblies were found {comma_separate(primary_assemblies)}"
+                f"Successful. The following primary assemblies were found {','.join(primary_assemblies)}"
             )
 
             if len(primary_assemblies) > 1 and derived_from_runs:
@@ -123,28 +123,28 @@ def main(input_file, output_file, no_assembly_file):
                     "Attempt to decrease the list of assemblies by filtering assemblies "
                     "generated from the runs other than genome's runs"
                 )
-                logging.debug(
-                    f"Genome {genome_accession} runs are {comma_separate(derived_from_runs)}"
-                )
+                logging.debug(f"Genome {genome_accession} runs are {','.join(derived_from_runs)}")
                 for assembly, runs in assembly2runs.items():
-                    logging.debug(f"Assembly {assembly} runs are {comma_separate(runs)}")
+                    logging.debug(f"Assembly {assembly} runs are {','.join(runs)}")
                     if runs and runs != set(derived_from_runs):
                         primary_assemblies.remove(assembly)
                 if not primary_assemblies:
                     log_skipped_genome(
                         genome_accession,
-                        f"There are no assemblies with similar runs for 'derived from' sample {comma_separate(derived_from_samples)}",
+                        f"There are no assemblies with similar runs for 'derived from' sample {','.join(derived_from_samples)}",
                         no_assembly_genomes,
                     )
                     continue
-                logging.debug(f"Updated list of assemblies: {comma_separate(primary_assemblies)}")
+                logging.debug(f"Updated list of assemblies: {','.join(primary_assemblies)}")
 
             if primary_assemblies:
-                genome_assembly_pairs.append([genome_accession, comma_separate(primary_assemblies)])
+                genome_assembly_pairs.append(
+                    [genome_accession, ",".join(sorted(primary_assemblies))]
+                )
             else:
                 log_skipped_genome(
                     genome_accession,
-                    f"No primary assemblies found for 'derived from' samples {comma_separate(derived_from_samples)}",
+                    f"No primary assemblies found for 'derived from' samples {','.join(derived_from_samples)}",
                     no_assembly_genomes,
                 )
 
@@ -407,11 +407,6 @@ def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
     # Reduce logging for noisy libraries
     for noisy_lib in ["requests", "urllib", "urllib3"]:
         logging.getLogger(noisy_lib).setLevel(logging.WARNING)
-
-
-def comma_separate(items: list) -> str:
-    """Convert a list of items into a comma-separated string."""
-    return ",".join(items)
 
 
 def parse_args():

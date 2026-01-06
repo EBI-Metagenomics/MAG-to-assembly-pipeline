@@ -66,7 +66,7 @@ def main(input_file, output_verified_file, output_invalid_file, download_folder,
                 logging.info(
                     f"Genome {genome} has been validated to originate from assemblies: {','.join(confirmed_assemblies)}"
                 )
-                validated_pairs.append([genome, ",".join(confirmed_assemblies)])
+                validated_pairs.append([genome, ",".join(sorted(confirmed_assemblies))])
             else:
                 logging.info(
                     f"Genome {genome} does not have any assemblies with matching contig hashes"

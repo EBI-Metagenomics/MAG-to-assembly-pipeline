@@ -1,104 +1,33 @@
 {
-    "Find assemblies for the test list of accessions": {
-        "content": [
-            {
-                "0": [
-                    [
-                        {
-                            "id": "batch.1"
-                        },
-                        "batch.1.verified.tsv:md5,3c4216ffbbc00239081e47cb1d61e9a5"
-                    ],
-                    [
-                        {
-                            "id": "batch.2"
-                        },
-                        "batch.2.verified.tsv:md5,2b3f4f88b4d8aaa0c9da79eafab98a9a"
-                    ]
-                ],
-                "1": [
-                    "batch.1.invalid.tsv:md5,3c867c1b47b7fde32cd920b1e032fa94",
-                    "batch.2.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
-                ],
-                "2": [
-                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
-                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
-                ],
-                "error_log": [
-                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
-                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
-                ],
-                "invalid_pairs": [
-                    "batch.1.invalid.tsv:md5,3c867c1b47b7fde32cd920b1e032fa94",
-                    "batch.2.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
-                ],
-                "verified_pairs": [
-                    [
-                        {
-                            "id": "batch.1"
-                        },
-                        "batch.1.verified.tsv:md5,3c4216ffbbc00239081e47cb1d61e9a5"
-                    ],
-                    [
-                        {
-                            "id": "batch.2"
-                        },
-                        "batch.2.verified.tsv:md5,2b3f4f88b4d8aaa0c9da79eafab98a9a"
-                    ]
-                ]
-            }
-        ],
-        "meta": {
-            "nf-test": "0.9.0",
-            "nextflow": "25.04.1"
-        },
-        "timestamp": "2025-08-20T10:03:10.457377"
-    },
     "Find assemblies for the test list of accessions - stub": {
         "content": [
             {
                 "0": [
                     [
                         {
-                            "id": "batch.1"
+                            "id": "test"
                         },
-                        "batch.1.verified.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
-                    ],
-                    [
-                        {
-                            "id": "batch.2"
-                        },
-                        "batch.2.verified.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        "test.verified.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                     ]
                 ],
                 "1": [
-                    "batch.1.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e",
-                    "batch.2.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    "test.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                 ],
                 "2": [
-                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
-                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    "test.err:md5,d41d8cd98f00b204e9800998ecf8427e"
                 ],
                 "error_log": [
-                    "batch.1.err:md5,d41d8cd98f00b204e9800998ecf8427e",
-                    "batch.2.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    "test.err:md5,d41d8cd98f00b204e9800998ecf8427e"
                 ],
                 "invalid_pairs": [
-                    "batch.1.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e",
-                    "batch.2.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    "test.invalid.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                 ],
                 "verified_pairs": [
                     [
                         {
-                            "id": "batch.1"
+                            "id": "test"
                         },
-                        "batch.1.verified.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
-                    ],
-                    [
-                        {
-                            "id": "batch.2"
-                        },
-                        "batch.2.verified.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        "test.verified.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
                     ]
                 ]
             }
@@ -107,6 +36,6 @@
             "nf-test": "0.9.0",
             "nextflow": "25.04.1"
         },
-        "timestamp": "2025-08-20T12:12:40.270185"
+        "timestamp": "2026-01-06T15:39:10.691044"
     }
 }
