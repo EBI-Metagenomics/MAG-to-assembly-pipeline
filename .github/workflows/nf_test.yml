@@ -34,6 +34,9 @@ jobs:
 
       - name: Run the nf-test
         run: |
+          # Runs nf-test suite with verbose output using test profile and docker container.
+          # Note: Module VERIFY_CONTIG_HASHES_MATCH is excluded from testing due to large file downloads
+          # that exceed GitHub Actions test environment resource limits.
           nf-test test --verbose --profile test,docker --tag ci
 
       - name: Upload debug artifacts

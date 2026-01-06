@@ -3,6 +3,7 @@ nextflow_process {
     name "Test Process FORMAT_OUTPUT_RESULTS"
     script "../main.nf"
     process "FORMAT_OUTPUT_RESULTS"
+    tag "ci"
 
     test("Output files preparation") {
 

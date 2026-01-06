@@ -3,7 +3,6 @@ nextflow_workflow {
     name "Test workflows/mag-assembly_linking.nf"
     script "../mag-assembly_linking.nf"
     workflow "MAG_ASSEMBLY_LINKING_PIPELINE"
-    tag "ci"
 
     test("Run the pipeline on the test dataset") {
 
