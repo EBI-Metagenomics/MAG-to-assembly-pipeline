@@ -3,6 +3,7 @@ nextflow_process {
     name "Test Process MAP_GENOMES_TO_ASSEMBLIES"
     script "../main.nf"
     process "MAP_GENOMES_TO_ASSEMBLIES"
+    tag "ci"
 
     test("Find assemblies for the test list of accessions") {
 

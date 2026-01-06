@@ -3,7 +3,6 @@ nextflow_process {
     name "Test Process VERIFY_CONTIG_HASHES_MATCH"
     script "../main.nf"
     process "VERIFY_CONTIG_HASHES_MATCH"
-    tag "ci"
 
     test("Find assemblies for the test list of accessions") {
 
