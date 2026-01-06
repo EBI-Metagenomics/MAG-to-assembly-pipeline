@@ -27,13 +27,13 @@ The pipeline performs the following main steps:
 
 4. **Formatting of output files**
 
-   MAG-assembly pairs are merged into a single table, `Species_rep` and `Action` columns are added, and updated [`processed_accessions_*.tsv`](workflows/tests/data/processed_accessions.tsv) and [`mag_to_assembly_mapping_*.tsv`](workflows/tests/data/mag_to_assembly_links.tsv) files are created.
+   MAG-assembly pairs are merged into a single table, `Species_rep` column is added, and updated [`processed_accessions_*.tsv`](workflows/tests/data/processed_accessions.tsv) and [`mag_to_assembly_mapping_*.tsv`](workflows/tests/data/mag_to_assembly_links.tsv) files are created.
 
 ## Quick Start
 
 1. Install [`Nextflow`](https://www.nextflow.io/docs/latest/getstarted.html#installation) (`>=23.04.0`)
 
-2. Install any of [`Docker`](https://docs.docker.com/engine/installation/) or [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) (you can follow [this tutorial](https://singularity-tutorial.github.io/01-installation/)). You can use [`Conda`](https://conda.io/miniconda.html) both to install Nextflow itself and also to manage software within pipelines. Please only use it within pipelines as a last resort; see [docs](https://nf-co.re/usage/configuration#basic-configuration-profiles)).
+2. Install any of [`Docker`](https://docs.docker.com/engine/installation/) or [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) (you can follow [this tutorial](https://singularity-tutorial.github.io/01-installation/)). You can use [`Conda`](https://conda.io/miniconda.html) both to install Nextflow itself and also to manage software within pipelines. Please only use it within pipelines as a last resort; see [docs](https://nf-co.re/usage/configuration#basic-configuration-profiles).
 
 3. Clone the repository:
 
@@ -61,7 +61,7 @@ By default, the pipeline does not require any input from the user.
 - `--accessions_list`: Path to TSV file containing input genome accessions (one per line). Use this to process a custom list of accessions instead of those collected automatically in the first step of the pipeline.
 - `--catalogues_metadata`: Path to TSV file containing genomes' metadata. Only used if provided with `--accessions_list`.
 - `--merge_with_results`: Path to existing genome-assembly mapping file to merge with new results (see [example](workflows/tests/data/mag_to_assembly_links.tsv)).
-- `--skip_accessions`: Path to TSV file containing accessions (one per line) that have been processed in previous runs and should be excluded from processing.
+- `--skip_accessions`: Path to TSV file containing accessions (one per line) that have been processed in previous runs and should be excluded from processing. Enabled when `--accessions_list` is used.
 
 ### Optional Output Parameters
 
