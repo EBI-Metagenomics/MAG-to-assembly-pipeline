@@ -1,0 +1,55 @@
+nextflow_process {
+
+    name "Test Process COLLECT_INPUT_ACCESSIONS"
+    script "../main.nf"
+    process "COLLECT_INPUT_ACCESSIONS"
+    tag "ci"
+
+    test("Download MAG/bin accessions from ENA/MGnify and prepare the input") {
+
+        when {
+            process {
+                """
+                input[0] = file("${moduleDir}/tests/data/processed_accessions.tsv")
+                input[1] = file("${projectDir}/data/known_and_found_gut_genomes.tsv")
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                // check header of metadata table
+                { assert path(process.out.catalogues_metadata.get(0)).readLines().contains('Genome	Genome_type	Genome_accession	Species_rep') },
+                // check the first line of metadata table
+                { assert path(process.out.catalogues_metadata.get(0)).readLines().contains('MGYG000307600	MAG	GCA_018713305	MGYG000307600') },
+                // check the first line of input list of accessions
+                { assert path(process.out.input_accessions.get(0)).readLines().contains('GCA_018713305') },
+            )
+        }
+
+    }
+
+    test("Download MAG/bin accessions from ENA/MGnify and prepare the input - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = file("${moduleDir}/tests/data/processed_accessions.tsv")
+                input[1] = file("${projectDir}/data/known_and_found_gut_genomes.tsv")
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert path(process.out.input_accessions.get(0)).exists() },
+                { assert path(process.out.catalogues_metadata.get(0)).exists() },
+            )
+        }
+
+    }
+}

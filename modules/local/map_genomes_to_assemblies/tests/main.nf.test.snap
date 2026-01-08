@@ -1,0 +1,41 @@
+{
+    "Find assemblies for the test list of accessions - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "test"
+                        },
+                        "test.mapped_pairs.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "1": [
+                    "test.no_assembly.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "2": [
+                    "test.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "error_log": [
+                    "test.err:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "no_assembly_found": [
+                    "test.no_assembly.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                ],
+                "tsv_mapping": [
+                    [
+                        {
+                            "id": "test"
+                        },
+                        "test.mapped_pairs.tsv:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.0",
+            "nextflow": "25.04.1"
+        },
+        "timestamp": "2026-01-06T15:23:15.425291"
+    }
+}

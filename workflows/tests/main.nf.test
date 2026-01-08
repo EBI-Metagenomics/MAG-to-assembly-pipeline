@@ -7,47 +7,37 @@ nextflow_workflow {
     test("Run the pipeline on the test dataset") {
 
         when {
-            workflow {
-
-            }
             params {
                     // required files
-                    gut_mapping           = "${projectDir}/data/known_and_found_gut_genomes.tsv"
-
-                    // names for generated intermidiate files 
-                    input_accessions      = 'input_accessions.tsv'
-                    catalogue_metadata    = 'all_catalog_metadata.tsv'
+                    gut_mapping         = "${projectDir}/data/known_and_found_gut_genomes.tsv"
 
                     // user input args
-                    portion_size          = 2
-                    previous_table        = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
-                    processed_acc         = "${moduleDir}/tests/data/processed_accessions.tsv"
-                    external_input        = "${moduleDir}/tests/data/input_accessions.tsv"
-                    external_metadata     = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
-                    output_path           = "${outputDir}"
-                    debug                 = true
+                    merge_with_results  = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
+                    skip_accessions     = "${moduleDir}/tests/data/processed_accessions.tsv"
+                    accessions_list     = "${moduleDir}/tests/data/input_accessions_small.tsv"
+                    catalogues_metadata = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
+                    output_path         = "${outputDir}"
             }
         }
 
         then {
             assert workflow.success
 
-            with(workflow.out.mag_to_assembly_links_ch) {
+            with(workflow.out.mag_to_assembly_mapping) {
                 // check header
-                assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep	Action')
+                assert path(get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep')
                 // check that line from previous table is present
-                assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300	add')
+                assert path(get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300')
                 // check that new lines from current run are added
-                assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098	add')
-                assert path(get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA	add')
+                assert path(get(0)).readLines().contains('ERZ6864471	GCA_938030915	MGYG000484098	MGYG000484098')
             }
-            with(workflow.out.processed_accessions_ch) {
+            with(workflow.out.processed_accessions) {
+                // check that processed accessions from previous run are present
+                assert path(get(0)).readLines().contains('ERZ1051661')
                 // check that accessions from current run are added to the list of processed accessions
-                assert path(get(0)).readLines().contains('ERZ1022847')
-                assert path(get(0)).readLines().contains('ERZ1462793')
                 assert path(get(0)).readLines().contains('GCA_938030915')
                 assert path(get(0)).readLines().contains('RSAC01')
-            }   
+            }
         }
     }
 }

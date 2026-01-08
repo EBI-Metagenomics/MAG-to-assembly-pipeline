@@ -1,35 +1,60 @@
 #!/usr/bin/env nextflow
 
-include { DOWNLOAD_INPUT                } from '../modules/download_input'
-include { FIND_PRIMARY_ASSEMBLY         } from '../modules/find_assembly'
-include { FINALISE_OUTPUT               } from '../modules/finalise_output'
+include { COLLECT_INPUT_ACCESSIONS   } from '../modules/local/collect_input_accessions/main'
+include { MAP_GENOMES_TO_ASSEMBLIES  } from '../modules/local/map_genomes_to_assemblies/main'
+include { VERIFY_CONTIG_HASHES_MATCH } from '../modules/local/verify_contig_hashes_match/main'
+include { FORMAT_OUTPUT_RESULTS      } from '../modules/local/format_output_results/main'
 
 workflow MAG_ASSEMBLY_LINKING_PIPELINE {
     main:
-        processed_acc_ch = params.processed_acc ? Channel.fromPath(params.processed_acc, checkIfExists: true) : []
+        skip_accessions_ch = params.skip_accessions ? channel.fromPath(params.skip_accessions, checkIfExists: true) : []
 
-        // If custom input accessions are provided, use them instead of the downloaded accessions
-        if (params.external_input) {
-            accessions_list_ch = Channel.fromPath(params.external_input, checkIfExists: true)
-            metadata_ch = params.external_metadata ? Channel.fromPath(params.external_metadata, checkIfExists: true) : []
+        // If custom list of input accessions is provided, use it instead of the accessions collected from ENA and MGnify
+        if (params.accessions_list) {
+            accessions_list_ch     = channel.fromPath(params.accessions_list, checkIfExists: true)
+            catalogues_metadata_ch = params.catalogues_metadata ? channel.fromPath(params.catalogues_metadata, checkIfExists: true) : []
 
+        // Otherwise, build list of input genomes from ENA bins and MAGs and MGnify catalogues
         } else {
-            DOWNLOAD_INPUT(processed_acc_ch, params.input_accessions, params.gut_mapping, params.catalogue_metadata)
-            metadata_ch = DOWNLOAD_INPUT.output.metadata
-            accessions_list_ch = DOWNLOAD_INPUT.output.input_accessions
+            COLLECT_INPUT_ACCESSIONS(skip_accessions_ch, params.gut_accessions_mapping)
+            accessions_list_ch     = COLLECT_INPUT_ACCESSIONS.output.input_accessions
+            catalogues_metadata_ch = COLLECT_INPUT_ACCESSIONS.output.catalogues_metadata
         }
 
-        // Input accessions are splitted to process them faster in parallel tasks
-        accessions_batches_ch = accessions_list_ch.splitText(by: params.batch_size, file: "batch")
-        FIND_PRIMARY_ASSEMBLY(accessions_batches_ch)
+        // Input accessions are splitted into batches of size params.batch_size to process them faster in parallel
+        accessions_batches_ch = accessions_list_ch
+            .splitText(by: params.batch_size, file: "batch")
+            .map { batch_file ->
+                def meta = [id: batch_file.name]
+                [meta, batch_file]
+            }
 
-        mag_assembly_pairs_ch = FIND_PRIMARY_ASSEMBLY.output.mag_assembly_pairs
-        not_linked_mags_ch = FIND_PRIMARY_ASSEMBLY.output.not_linked_mags
-        previous_table_ch = params.previous_table ? Channel.fromPath(params.previous_table) : []
-        FINALISE_OUTPUT(mag_assembly_pairs_ch.collect(), not_linked_mags_ch.collect(), metadata_ch, processed_acc_ch, previous_table_ch)
+        // Find primary assembly for each genome using information from ENA
+        MAP_GENOMES_TO_ASSEMBLIES(accessions_batches_ch)
+
+        // Verify that contigs are identical in a genome and its assembly
+        VERIFY_CONTIG_HASHES_MATCH(MAP_GENOMES_TO_ASSEMBLIES.output.tsv_mapping)
+
+        mag_assembly_pairs_ch = VERIFY_CONTIG_HASHES_MATCH.output.verified_pairs
+            .map { _meta, pairs_tsv -> pairs_tsv}
+            .collectFile(name: "mag_to_assembly_mapping.tsv")
+        no_assembly_genomes_ch = VERIFY_CONTIG_HASHES_MATCH.output.invalid_pairs
+            .mix(MAP_GENOMES_TO_ASSEMBLIES.output.no_assembly_found)
+            .collectFile(name: "no_assembly_genomes.tsv")
+        previous_results_ch = params.merge_with_results ? channel.fromPath(params.merge_with_results) : []
+
+        // Format output results: create a table with MAGs, their primary assemblies and MGYG accessions,
+        // and update the list of processed accessions
+        // TODO Errors should be added here to avoid unlinking when there are failed verifications
+        FORMAT_OUTPUT_RESULTS(
+            mag_assembly_pairs_ch,
+            no_assembly_genomes_ch,
+            catalogues_metadata_ch,
+            skip_accessions_ch,
+            previous_results_ch
+        )
 
     emit:
-        mag_to_assembly_links_ch = FINALISE_OUTPUT.out.mag_to_assembly_links
-        processed_accessions_ch = FINALISE_OUTPUT.out.processed_accessions
+        mag_to_assembly_mapping = FORMAT_OUTPUT_RESULTS.out.mag_to_assembly_mapping
+        processed_accessions    = FORMAT_OUTPUT_RESULTS.out.processed_accessions
 }
-

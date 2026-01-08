@@ -1,0 +1,57 @@
+nextflow_process {
+
+    name "Test Process MAP_GENOMES_TO_ASSEMBLIES"
+    script "../main.nf"
+    process "MAP_GENOMES_TO_ASSEMBLIES"
+    tag "ci"
+
+    test("Find assemblies for the test list of accessions") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.fromPath("${moduleDir}/tests/data/input_accessions.tsv", checkIfExists: true)
+                    .map { batch_file ->
+                        [[id:'test'], batch_file]
+                    }
+                """
+            }
+        }
+        then {
+            assert process.success
+            with(process.out.tsv_mapping) {
+                assert path(get(0)[1]).readLines().contains('ERZ1022847	ERZ23491102,ERZ807141,ERZ842248,ERZ908435')
+                assert path(get(0)[1]).readLines().contains('ERZ1462793	ERZ28653857')
+                assert path(get(0)[1]).readLines().contains('GCA_938030915	ERZ6864471')
+                assert path(get(0)[1]).readLines().contains('CAMPAA01	ERZ12302812,ERZ12302813,ERZ12302814,ERZ12302815,ERZ12302816,ERZ12302817,ERZ12302820,ERZ12302851,ERZ1756080,ERZ1756110,ERZ28612940,ERZ28612941,ERZ28612959,ERZ28612961,ERZ28612963,ERZ28612966,ERZ28612969,ERZ28612970,ERZ28612978,ERZ28613016')
+            }
+            with(process.out.no_assembly_found) {
+                assert path(get(0)).readLines().contains('RSAC01	Failed to parse XML for SAMN10411419 due to: No \'derived from\' attribute in sample XML SAMN10411419')
+            }
+        }
+
+    }
+
+    test("Find assemblies for the test list of accessions - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = Channel.fromPath("${moduleDir}/tests/data/input_accessions.tsv", checkIfExists: true)
+                    .map { batch_file ->
+                        [[id:'test'], batch_file]
+                    }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(process.out).match() }
+            )
+        }
+    }
+
+}
