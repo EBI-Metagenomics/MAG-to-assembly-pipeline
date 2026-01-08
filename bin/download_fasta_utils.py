@@ -139,9 +139,8 @@ def load_genbank_locations(gca_accessions: set) -> dict[str, str | None]:
             if not line or line.startswith("#"):
                 continue
             fields = line.rstrip("\n").split("\t")
-            accession = fields[0].split(".")[
-                0
-            ]  # accession in the table always has version, remove it
+            # accession in the table always has version, remove it
+            accession = fields[0].split(".")[0]
             if accession in locations:
                 ftp_path = fields[19]
                 if ftp_path != "na":
