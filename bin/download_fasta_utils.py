@@ -1,12 +1,7 @@
 import csv
 import gzip
-import http.client
 import logging
 import shutil
-import urllib.error as error
-
-# TODO replace urllib with requests in download_from_NCBI_FTP
-import urllib.request as request
 from ftplib import FTP, error_perm, error_proto, error_reply, error_temp
 from pathlib import Path
 
@@ -15,7 +10,9 @@ import requests
 from botocore import UNSIGNED
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
+from requests.exceptions import RequestException
 from retry import retry
+from urllib3.exceptions import IncompleteRead
 
 GENBANK_ASSEMBLY_SUMMARY = (
     "https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt"
@@ -136,14 +133,15 @@ def load_genbank_locations(gca_accessions: set) -> dict[str, str | None]:
     locations: dict[str, str | None] = {acc: None for acc in gca_accessions}
 
     logging.info("Resolving GenBank FTP locations for GCA accessions")
-    with request.urlopen(GENBANK_ASSEMBLY_SUMMARY) as response:
-        for raw_line in response:
-            line = raw_line.decode("utf-8")
-            if line.startswith("#"):
+    with requests.get(GENBANK_ASSEMBLY_SUMMARY, stream=True) as response:
+        response.raise_for_status()
+        for line in response.iter_lines(decode_unicode=True):
+            if not line or line.startswith("#"):
                 continue
-
             fields = line.rstrip("\n").split("\t")
-            accession = fields[0].split(".")[0]
+            accession = fields[0].split(".")[
+                0
+            ]  # accession in the table always has version, remove it
             if accession in locations:
                 ftp_path = fields[19]
                 if ftp_path != "na":
@@ -153,9 +151,7 @@ def load_genbank_locations(gca_accessions: set) -> dict[str, str | None]:
     return locations
 
 
-@retry(
-    (error.HTTPError, error.URLError, http.client.IncompleteRead), tries=5, delay=15, backoff=1.5
-)
+@retry((RequestException, IncompleteRead), tries=5, delay=15, backoff=1.5)
 def download_from_NCBI_FTP(accession: str, fasta_url: str, outpath: Path) -> Path:
     """
     Download GCA fasta file using NCBI FTP link.
@@ -165,10 +161,13 @@ def download_from_NCBI_FTP(accession: str, fasta_url: str, outpath: Path) -> Pat
     :return: Path to the downloaded fasta file
     """
     logging.debug(f"Downloading genome {accession} from NCBI FTP using URL {fasta_url}")
-    with request.urlopen(fasta_url) as response:
-        content = response.read()
-    with open(outpath, "wb") as out:
-        out.write(content)
+    with requests.get(fasta_url, stream=True) as response:
+        response.raise_for_status()
+
+        with open(outpath, "wb") as out:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:  # filters out keep-alive chunks
+                    out.write(chunk)
 
     return check_if_empty_gz(outpath)
 
