@@ -1,5 +1,5 @@
 {
-    "Find assemblies for the test list of accessions - stub": {
+    "Verify that MAG-assembly pairs are valid - stub": {
         "content": [
             {
                 "0": [
@@ -36,6 +36,6 @@
             "nf-test": "0.9.0",
             "nextflow": "25.04.1"
         },
-        "timestamp": "2026-01-06T15:39:10.691044"
+        "timestamp": "2026-01-08T12:00:54.057082"
     }
 }
