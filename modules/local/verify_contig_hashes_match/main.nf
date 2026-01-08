@@ -13,12 +13,14 @@ process VERIFY_CONTIG_HASHES_MATCH {
     path("*.err")                          , emit: error_log, optional: true
 
     script:
+    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "$meta.id"
     def cleanup_flag = params.cleanup ? "--cleanup" : ""
     def debug_flag = params.debug ? "--debug" : ""
 
     """
     verify_contig_hashes_match.py \\
+        $args \\
         --input ${genome_to_assemblies_mapping} \\
         --output_verified ${prefix}.verified.tsv \\
         --output_invalid ${prefix}.invalid.tsv \\
