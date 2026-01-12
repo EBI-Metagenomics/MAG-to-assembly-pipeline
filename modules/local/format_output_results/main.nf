@@ -38,6 +38,5 @@ process FORMAT_OUTPUT_RESULTS {
     """
     touch mag_to_assembly_mapping_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
     touch processed_accessions_\$(date +"%Y-%m-%d_%Hh%Mm").tsv
-    touch mag_to_assembly_links_to_unlink\$(date +"%Y-%m-%d_%Hh%Mm").tsv
     """
 }
