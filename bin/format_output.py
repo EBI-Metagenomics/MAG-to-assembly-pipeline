@@ -49,11 +49,13 @@ def main(results: list, catalogue_metadata: Path, previous_table: Path, write_de
         unique_previous_df = previous_df[
             ~previous_df["MAG_accession"].isin(result_df["MAG_accession"])
         ]
-        result_df = pd.concat([unique_previous_df, result_df]).reset_index(drop=True)
 
         if write_deleted:
             deleted_output_file = generate_filename("mag_to_assembly_links_to_unlink")
+            unique_previous_df.fillna("NA", inplace=True)
             unique_previous_df.to_csv(deleted_output_file, sep="\t", index=False)
+        else:
+            result_df = pd.concat([unique_previous_df, result_df]).reset_index(drop=True)
 
     result_df.fillna("NA", inplace=True)
     output_file = generate_filename("mag_to_assembly_mapping")
