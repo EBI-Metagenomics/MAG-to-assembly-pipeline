@@ -124,7 +124,7 @@ The pipeline generates the following outputs in the specified output directory:
 
 - `processed_accessions_YYYY-MM-DD_HHhMMm.tsv`: Timestamped list of genome accessions processed during the run
 - `mag_to_assembly_mapping_YYYY-MM-DD_HHhMMm.tsv`: Timestamped table mapping genomes to their corresponding assemblies
-- `mag_to_assembly_links_to_unlink_YYYY-MM-DD_HHhMMm.tsv`: Genome–assembly pairs that should be removed from downstream databases, typically due to suppression in ENA (generated only when `--previous_mapping` is used without `--skip_accessions`).
+- `mag_to_assembly_links_to_unlink_YYYY-MM-DD_HHhMMm.tsv`: Genome–assembly pairs that should be removed from downstream databases, typically due to suppression in ENA (generated only when `--previous_mapping` is supplied without `--skip_accessions`).
 - `ena_related_errors/*.err`: Error logs listing genomes that failed processing due to ENA-related issues.
 
 ## Configuration Profiles
