@@ -110,7 +110,7 @@ nextflow run main.nf \
   -profile docker
 ```
 
-#### Generate mag*to_assembly_links_to_unlink*\* file
+#### Generate `mag_to_assembly_links_to_unlink_*` file
 
 ```bash
 nextflow run main.nf \
