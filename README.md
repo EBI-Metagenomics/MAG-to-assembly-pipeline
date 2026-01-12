@@ -58,7 +58,7 @@ In this mode, results from a previous execution are reused, and only MAGs submit
    nextflow run main.nf \
      --input_accessions workflows/tests/data/input_accessions.tsv \
      --catalogues_metadata workflows/tests/data/all_catalog_metadata.tsv \
-     --merge_with_results workflows/tests/data/mag_to_assembly_links.tsv \
+     --previous_mapping workflows/tests/data/mag_to_assembly_links.tsv \
      -profile docker,test,arm
    ```
 
@@ -70,7 +70,7 @@ Main workflow of the pipeline runs without any user-provided input and automatic
 
 - `--accessions_list`: Path to TSV file containing input genome accessions (one per line). When provided, the pipeline processes only these accessions instead of collecting them automatically from ENA.
 - `--catalogues_metadata`: Path to TSV file containing genome metadata from MGnify catalogues. Only used if provided with `--accessions_list`.
-- `--merge_with_results`: Path to an existing genome–assembly mapping file to be merged with newly generated results (see [example](workflows/tests/data/mag_to_assembly_links.tsv)).
+- `--previous_mapping`: Path to an existing genome–assembly mapping file to be merged or compared with newly generated results (see [example](workflows/tests/data/mag_to_assembly_links.tsv)).
 - `--skip_accessions`: Path to TSV file containing genome accessions (one per line) that were processed in previous runs and should be excluded. This option is not applicable when `--accessions_list` is used.
 
 ### Optional Output Parameters
@@ -105,7 +105,7 @@ nextflow run main.nf \
 
 ```bash
 nextflow run main.nf \
-  --merge_with_results previous_mapping.tsv \
+  --previous_mapping previous_mapping.tsv \
   --skip_accessions processed_accessions.tsv \
   -profile docker
 ```
@@ -114,7 +114,7 @@ nextflow run main.nf \
 
 ```bash
 nextflow run main.nf \
-  --merge_with_results previous_mapping.tsv \
+  --previous_mapping previous_mapping.tsv \
   -profile docker
 ```
 
@@ -124,7 +124,7 @@ The pipeline generates the following outputs in the specified output directory:
 
 - `processed_accessions_YYYY-MM-DD_HHhMMm.tsv`: Timestamped list of genome accessions processed during the run
 - `mag_to_assembly_mapping_YYYY-MM-DD_HHhMMm.tsv`: Timestamped table mapping genomes to their corresponding assemblies
-- `mag_to_assembly_links_to_unlink_YYYY-MM-DD_HHhMMm.tsv`: Genome–assembly pairs that should be removed from downstream databases, typically due to suppression in ENA (generated only when `--merge_with_results` is used without `--skip_accessions`).
+- `mag_to_assembly_links_to_unlink_YYYY-MM-DD_HHhMMm.tsv`: Genome–assembly pairs that should be removed from downstream databases, typically due to suppression in ENA (generated only when `--previous_mapping` is used without `--skip_accessions`).
 - `ena_related_errors/*.err`: Error logs listing genomes that failed processing due to ENA-related issues.
 
 ## Configuration Profiles

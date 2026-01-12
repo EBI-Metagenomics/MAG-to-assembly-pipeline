@@ -41,7 +41,7 @@ workflow MAG_ASSEMBLY_LINKING_PIPELINE {
         no_assembly_genomes_ch = VERIFY_CONTIG_HASHES_MATCH.output.invalid_pairs
             .mix(MAP_GENOMES_TO_ASSEMBLIES.output.no_assembly_found)
             .collectFile(name: "no_assembly_genomes.tsv")
-        previous_results_ch = params.merge_with_results ? channel.fromPath(params.merge_with_results) : []
+        previous_results_ch = params.previous_mapping ? channel.fromPath(params.previous_mapping) : []
 
         // Format output results: create a table with MAGs, their primary assemblies and MGYG accessions,
         // and update the list of processed accessions
