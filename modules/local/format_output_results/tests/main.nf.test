@@ -45,8 +45,8 @@ nextflow_process {
         when {
             process {
                 """
-                input[0] = Channel.fromPath("${moduleDir}/tests/data/*.mapped_pairs.tsv", checkIfExists: true).collect()
-                input[1] = Channel.fromPath("${moduleDir}/tests/data/*.no_assembly.tsv", checkIfExists: true).collect()
+                input[0] = channel.fromPath("${moduleDir}/tests/data/*.mapped_pairs.tsv", checkIfExists: true).collect()
+                input[1] = channel.fromPath("${moduleDir}/tests/data/*.no_assembly.tsv", checkIfExists: true).collect()
                 input[2] = file("${moduleDir}/tests/data/all_catalog_metadata.tsv")
                 input[3] = []
                 input[4] = file("${moduleDir}/tests/data/mag_to_assembly_links.tsv")
