@@ -16,12 +16,51 @@ from download_fasta_utils import (
     download_from_ENA_API,
     download_from_ENA_FIRE,
     download_from_ENA_FTP,
+    download_from_NCBI_FTP,
+    load_genbank_locations,
 )
 
 
-def main(input_file, output_verified_file, output_invalid_file, download_folder, cleanup):
+def main(
+    input_file,
+    output_verified_file,
+    output_invalid_file,
+    download_folder,
+    cleanup,
+    predownload_ncbi_genomes=True,
+):
     validated_pairs = []
     invalid_pairs = []
+
+    if not download_folder.exists():
+        download_folder.mkdir(parents=True)
+        logging.debug(f"Directory {download_folder} is created")
+
+    # To address often ENA FASTA API failures for GCA accessions
+    # we first collect and download all GCA FASTA files to the download folder
+    # Later those files will be picked up during processing without additional downloads
+    if predownload_ncbi_genomes:
+        logging.debug("Predownload of NCBI genomes with GCA_* accessions is enabled")
+        logging.debug("Collecting GCA_* accessions for predownloading (if any)")
+        gca_accessions = set()
+        with open(input_file, "r") as handle:
+            reader = csv.reader(handle, delimiter="\t")
+            for row in reader:
+                genome = row[0]
+                if genome.startswith("GCA"):
+                    gca_accessions.add(genome)
+        if gca_accessions:
+            logging.debug(f"Predownloading {len(gca_accessions)} GCA_* fasta files from NCBI FTP")
+            gca_locations = load_genbank_locations(gca_accessions)
+            for gca_accession, url in gca_locations.items():
+                if not url:
+                    logging.debug(f"{gca_accession} No FTP location found. Skipping predownload")
+                    continue
+                outpath = download_folder / f"{gca_accession}.fa.gz"
+                try:
+                    download_from_NCBI_FTP(gca_accession, url, outpath)
+                except Exception as e:
+                    logging.debug(f"Predownload for {gca_accession} failed: {e}. Skipping")
 
     with open(input_file, "r") as input_handle:
         reader = csv.reader(input_handle, delimiter="\t")
@@ -115,10 +154,6 @@ def handle_fasta_processing(
     :param write_cache: If True, writes computed hashes to a cache file
     :return: set of md5 hashes of contigs
     """
-    if not download_folder.exists():
-        download_folder.mkdir(parents=True)
-        logging.debug(f"Directory {download_folder} is created")
-
     try:
         outpath = download_folder / f"{accession}.fa.gz"
         cache_path = download_folder / f"{accession}.hash"
@@ -243,6 +278,15 @@ def parse_args():
         action="store_true",
         help="Remove downloaded cache of checksums and download folder after execution",
     )
+    parser.add_argument(
+        "--no-predownload-ncbi-genomes",
+        dest="predownload_ncbi_genomes",
+        action="store_false",
+        help=(
+            "Disable predownload of NCBI genomes with GCA_* accessions. "
+            "Predownload helps to avoid ENA FASTA API failures, but slows execution on very small datasets"
+        ),
+    )
     parser.add_argument("--debug", action="store_true", help="Increase logging verbosity")
     return parser.parse_args()
 
@@ -275,4 +319,11 @@ def setup_logging(debug=False, error_logfile="ena_related_errors.log"):
 if __name__ == "__main__":
     args = parse_args()
     setup_logging(args.debug, args.errors)
-    main(args.input, args.output_verified, args.output_invalid, args.download_folder, args.cleanup)
+    main(
+        args.input,
+        args.output_verified,
+        args.output_invalid,
+        args.download_folder,
+        args.cleanup,
+        args.predownload_ncbi_genomes,
+    )

@@ -101,7 +101,7 @@ def main(skip_accessions_file, output_file, catalogues_metadata_file, gut_mappin
 
     logging.info("Step 5/5:")
     logging.info(
-        "Remove from the output all accessions that found in the input list of previously processed genomes..."
+        "Remove from the output all accessions that are found in the input list of previously processed genomes..."
     )
     if skip_accessions_file and skip_accessions_file.stat().st_size != 0:
         processed_df = pd.read_csv(
@@ -112,6 +112,13 @@ def main(skip_accessions_file, output_file, catalogues_metadata_file, gut_mappin
         ]
     else:
         logging.info("There is no list provided, skipping.")
+    # Put all GCA accessions first to make sure they are collected together in one batch.
+    # This makes predownloading of NCBI genomes downstream more efficient because
+    # fetching of the large TXT file with FTP links done for fewer number of batches.
+    gca_df = combined_df[combined_df["Genome_accession"].str.startswith("GCA")]
+    non_gca_df = combined_df[~combined_df["Genome_accession"].str.startswith("GCA")]
+
+    combined_df = pd.concat([gca_df, non_gca_df], ignore_index=True)
     combined_df.to_csv(output_file, sep="\t", header=False, index=False)
 
     logging.info(f"Finished successfully! List of genome accessions is saved to {output_file}")

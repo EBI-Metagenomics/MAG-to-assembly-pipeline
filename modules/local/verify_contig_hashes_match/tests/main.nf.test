@@ -4,7 +4,34 @@ nextflow_process {
     script "../main.nf"
     process "VERIFY_CONTIG_HASHES_MATCH"
 
-    test("Find assemblies for the test list of accessions") {
+    test("Verify that MAG-assembly pairs are valid - no GCA predownload") {
+        config "./no_predownload.config"
+        when {
+            process {
+                """
+                input[0] = Channel.fromPath("${moduleDir}/tests/data/input_mapping.tsv", checkIfExists: true)
+                    .map { batch_file ->
+                        [[id:'test'], batch_file]
+                    }
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            with(process.out.verified_pairs) {
+                assert path(get(0)[1]).readLines().contains('ERZ1022847	ERZ807141')
+                assert path(get(0)[1]).readLines().contains('GCA_938030915	ERZ6864471')
+                assert path(get(0)[1]).readLines().contains('CAMPAA01	ERZ12302816')
+            }
+            with(process.out.invalid_pairs) {
+                assert path(get(0)).readLines().contains('ERZ1462793	the contigs of this genome are not identical to the contigs in the primary assemblies ERZ807141')
+            }
+        }
+
+    }
+
+        test("Verify that MAG-assembly pairs are valid - GCA predownload enabled") {
 
         when {
             process {
@@ -31,7 +58,7 @@ nextflow_process {
 
     }
 
-    test("Find assemblies for the test list of accessions - stub") {
+    test("Verify that MAG-assembly pairs are valid - stub") {
         options "-stub"
 
         when {

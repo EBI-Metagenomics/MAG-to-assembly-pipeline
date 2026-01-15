@@ -10,7 +10,13 @@ import requests
 from botocore import UNSIGNED
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
+from requests.exceptions import RequestException
 from retry import retry
+from urllib3.exceptions import IncompleteRead
+
+GENBANK_ASSEMBLY_SUMMARY = (
+    "https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt"
+)
 
 
 def get_fasta_url(accession: str, analysis_ftp_field: str = "generated_ftp") -> str:
@@ -115,6 +121,57 @@ def download_from_ENA_FTP(accession: str, outpath: Path) -> Path:
         ftp.login()
         with open(outpath, "wb") as file:
             ftp.retrbinary(f"RETR {ftp_path}", file.write)
+    return check_if_empty_gz(outpath)
+
+
+def load_genbank_locations(gca_accessions: set) -> dict[str, str | None]:
+    """
+    Resolve GCA accessions to GenBank FTP URLs in a single pass.
+    :param gca_accessions: Set of GCA accessions
+    :return: Dictionary mapping GCA accessions to their GenBank FTP URLs
+    """
+    locations: dict[str, str | None] = {acc: None for acc in gca_accessions}
+
+    logging.info("Resolving GenBank FTP locations for GCA accessions")
+    with requests.get(GENBANK_ASSEMBLY_SUMMARY, stream=True) as response:
+        response.raise_for_status()
+        for line in response.iter_lines(decode_unicode=True):
+            if not line or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            # accession in the table always has version, remove it
+            accession = fields[0].split(".")[0]
+            if accession in locations:
+                ftp_path = fields[19]
+                if ftp_path.startswith("https://ftp.ncbi.nlm.nih.gov/"):
+                    logging.warning(
+                        f"Unexpected ftp_path format for {accession}: {ftp_path}",
+                    )
+                    continue
+                assembly = ftp_path.split("/")[-1]
+                locations[accession] = f"{ftp_path}/{assembly}_genomic.fna.gz"
+
+    return locations
+
+
+@retry((RequestException, IncompleteRead), tries=5, delay=15, backoff=1.5)
+def download_from_NCBI_FTP(accession: str, fasta_url: str, outpath: Path) -> Path:
+    """
+    Download GCA fasta file using NCBI FTP link.
+    :param accession: NCBI genome accession (GCA_*)
+    :param fasta_url: FTP URL of the fasta file
+    :param outpath: Path to the folder where the fasta file will be saved
+    :return: Path to the downloaded fasta file
+    """
+    logging.debug(f"Downloading genome {accession} from NCBI FTP using URL {fasta_url}")
+    with requests.get(fasta_url, stream=True) as response:
+        response.raise_for_status()
+
+        with open(outpath, "wb") as out:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:  # filters out keep-alive chunks
+                    out.write(chunk)
+
     return check_if_empty_gz(outpath)
 
 
