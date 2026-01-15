@@ -40,6 +40,44 @@ nextflow_process {
 
     }
 
+        test("Output files preparation - creation of file with mappings to delete") {
+
+        when {
+            process {
+                """
+                input[0] = channel.fromPath("${moduleDir}/tests/data/*.mapped_pairs.tsv", checkIfExists: true).collect()
+                input[1] = channel.fromPath("${moduleDir}/tests/data/*.no_assembly.tsv", checkIfExists: true).collect()
+                input[2] = file("${moduleDir}/tests/data/all_catalog_metadata.tsv")
+                input[3] = []
+                input[4] = file("${moduleDir}/tests/data/mag_to_assembly_links.tsv")
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep') },
+                // Check that lines from previous table are NOT present in the output mapping
+                { assert !path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300') },
+                // Check that new lines from current run are added to the output mapping
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ1694383	GCA_905170305	NA	NA') },
+                { assert path(process.out.mag_to_assembly_mapping.get(0)).readLines().contains('ERZ807141	ERZ1022847	NA	NA') },
+                // Check that file with mappings to delete is created and contains unique previous entries
+                { assert path(process.out.links_to_unlink.get(0)).exists() },
+                { assert path(process.out.links_to_unlink.get(0)).readLines().contains('Primary_assembly	MAG_accession	Genome	Species_rep') },
+                { assert path(process.out.links_to_unlink.get(0)).readLines().contains('ERZ1311121	ERZ973106	MGYG000028474	MGYG000001300') },
+                { assert path(process.out.links_to_unlink.get(0)).readLines().contains('ERZ1667847	ERZ1669850	NA	NA') },
+                // Check that processed accessions from current run are added
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('ERZ1462793') },
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('ERZ1022847') },
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('RSAC01') },
+                { assert path(process.out.processed_accessions.get(0)).readLines().contains('GCA_905170305') },
+            )
+        }
+
+    }
+
     test("Output files preparation - stub") {
 
         options "-stub"

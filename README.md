@@ -7,27 +7,37 @@
 
 ## Introduction
 
-This Nextflow pipeline is designed to map Metagenome-Assembled Genome (MAG) accessions to their corresponding primary metagenome assemblies. The pipeline retrieves metadata links through the [ENA Portal API and Browser API](https://ena-docs.readthedocs.io/en/latest/retrieval/programmatic-access.html), than verifies matches by comparing contig checksums between MAGs and assemblies.
+This Nextflow pipeline is designed to map Metagenome-Assembled Genome (MAG) ENA accessions to their corresponding primary metagenome assemblies.
+The pipeline retrieves metadata links through the [ENA Portal API and Browser API](https://ena-docs.readthedocs.io/en/latest/retrieval/programmatic-access.html), then verifies matches by comparing contig checksums between MAGs and assemblies.
 
 ## Pipeline Overview
 
-The pipeline performs the following main steps:
+![MAG-to-Assembly Pipeline Diagram](assets/pipeline-diagram.png)
 
-1. **Creation of the list of input genome accessions**
+### Main workflow
 
-   Gather accessions from MGnify catalogs and ENA, merge them, remove redundancy, and exclude accessions that have been processed in previous runs of the pipeline. This step is skipped if running on user-provided input accessions.
+The main workflow is shown in purple in the diagram and performs the following steps:
 
-2. **Mapping of genomes to assemblies**
+1. **Create the list of input genome accessions**
 
-   This process utilizes the ENA API to retrieve metadata of the input genome accessions and, using connections between genomes, samples, and assemblies in the ENA data model, identifies accessions of putative primary assemblies.
+   Genome accessions are collected from MGnify catalogues and ENA, merged into a single list, deduplicated, and filtered to remove accessions that were processed in previous pipeline runs. If user-provided accessions are supplied, this step is skipped.
 
-3. **Validation of found assemblies using contig checksums**
+2. **Map genomes to assemblies**
 
-   Genome-assembly pair is only considered valid if all genome's contigs are a subset of assembly's contigs. This is validated through comparison of hash sets of contig sequences for each assembly and genome. To compute contig checksum values, FASTA files for all genomes and assemblies are downloaded.
+   The ENA API is queried to retrieve metadata for each input genome accession. Using cross-references between genomes, samples, and assemblies in the ENA data model, the pipeline identifies candidate primary assembly accessions.
 
-4. **Formatting of output files**
+3. **Validate genome–assembly mappings using contig checksums**
 
-   MAG-assembly pairs are merged into a single table, `Species_rep` column is added, and updated [`processed_accessions_*.tsv`](workflows/tests/data/processed_accessions.tsv) and [`mag_to_assembly_mapping_*.tsv`](workflows/tests/data/mag_to_assembly_links.tsv) files are created.
+   A genome–assembly pair is considered valid only if all contigs of the genome are present in the corresponding assembly. This is verified by comparing hash sets of contig sequences. FASTA files for both genomes and assemblies are downloaded in order to compute contig checksums.
+
+4. **Format output files**
+
+   All validated MAG–assembly mappings are merged into a single output table [`mag_to_assembly_mapping_*.tsv`](workflows/tests/data/mag_to_assembly_links.tsv), `Species_rep` column is added (MGnify genomes only), and [`processed_accessions_*.tsv`](workflows/tests/data/processed_accessions.tsv) file is created.
+
+### Updating workflow
+
+The pipeline can also be run in update mode (shown in green in the diagram).
+In this mode, results from a previous execution are reused, and only MAGs submitted to ENA since the last run are processed. This allows the mapping table to be incrementally updated without reprocessing all accessions.
 
 ## Quick Start
 
@@ -48,34 +58,34 @@ The pipeline performs the following main steps:
    nextflow run main.nf \
      --input_accessions workflows/tests/data/input_accessions.tsv \
      --catalogues_metadata workflows/tests/data/all_catalog_metadata.tsv \
-     --merge_with_results workflows/tests/data/mag_to_assembly_links.tsv \
+     --previous_mapping workflows/tests/data/mag_to_assembly_links.tsv \
      -profile docker,test,arm
    ```
 
 ## Usage
 
-By default, the pipeline does not require any input from the user.
+Main workflow of the pipeline runs without any user-provided input and automatically processes all MAG/bin accessions retrieved from ENA and MGnify.
 
 ### Optional Input Parameters
 
-- `--accessions_list`: Path to TSV file containing input genome accessions (one per line). Use this to process a custom list of accessions instead of those collected automatically in the first step of the pipeline.
-- `--catalogues_metadata`: Path to TSV file containing genomes' metadata. Only used if provided with `--accessions_list`.
-- `--merge_with_results`: Path to existing genome-assembly mapping file to merge with new results (see [example](workflows/tests/data/mag_to_assembly_links.tsv)).
-- `--skip_accessions`: Path to TSV file containing accessions (one per line) that have been processed in previous runs and should be excluded from processing. Enabled when `--accessions_list` is used.
+- `--accessions_list`: Path to TSV file containing input genome accessions (one per line). When provided, the pipeline processes only these accessions instead of collecting them automatically from ENA.
+- `--catalogues_metadata`: Path to TSV file containing genome metadata from MGnify catalogues. Only used if provided with `--accessions_list`.
+- `--previous_mapping`: Path to an existing genome–assembly mapping file to be merged or compared with newly generated results (see [example](workflows/tests/data/mag_to_assembly_links.tsv)).
+- `--skip_accessions`: Path to TSV file containing genome accessions (one per line) that were processed in previous runs and should be excluded. This option is not applicable when `--accessions_list` is used.
 
 ### Optional Output Parameters
 
-- `--output_path`: Output directory where results will be saved (default: `./results`)
+- `--output_path`: Output directory where results will be written (default: `./results`)
 
 ### Optional Execution Parameters
 
 - `--batch_size`: Size of batches into which the list of input accessions is divided for parallel processing (default: `250`)
-- `--debug`: Enable debug mode to generate additional logging information (default: `false`)
-- `--cleanup`: Remove contig hashes cache after processing to save disk space (default: `true`)
+- `--debug`: Enable debug mode to produce additional logging information (default: `false`)
+- `--cleanup`: Remove cached contig checksum files after execution to reduce disk usage (default: `true`)
 
-### Example Commands
+### Usage scenarios
 
-#### Run with default settings (process all ENA/MGnify accessions)
+#### Run without any input files (process all ENA/MGnify accessions)
 
 ```bash
 nextflow run main.nf -profile docker
@@ -91,12 +101,20 @@ nextflow run main.nf \
   -profile docker
 ```
 
-#### Run with previous results to merge
+#### Update an existing mapping with newly submitted MAGs
 
 ```bash
 nextflow run main.nf \
-  --merge_with_results previous_mapping.tsv \
+  --previous_mapping previous_mapping.tsv \
   --skip_accessions processed_accessions.tsv \
+  -profile docker
+```
+
+#### Generate `mag_to_assembly_links_to_unlink_*` file
+
+```bash
+nextflow run main.nf \
+  --previous_mapping previous_mapping.tsv \
   -profile docker
 ```
 
@@ -104,9 +122,10 @@ nextflow run main.nf \
 
 The pipeline generates the following outputs in the specified output directory:
 
-- `processed_accessions_YYYY-MM-DD_HHhMMm.tsv`: Timestamped file containing processed accession results
-- `mag_to_assembly_mapping_YYYY-MM-DD_HHhMMm.tsv`: Timestamped file containing mapping of genomes to assemblies
-- `ena_related_errors/*.err`: Error logs from processing steps listing genomes that failed processing due to ENA-related issues.
+- `processed_accessions_YYYY-MM-DD_HHhMMm.tsv`: Timestamped list of genome accessions processed during the run
+- `mag_to_assembly_mapping_YYYY-MM-DD_HHhMMm.tsv`: Timestamped table mapping genomes to their corresponding assemblies
+- `mag_to_assembly_links_to_unlink_YYYY-MM-DD_HHhMMm.tsv`: Genome–assembly pairs that should be removed from downstream databases, typically due to suppression in ENA (generated only when `--previous_mapping` is supplied without `--skip_accessions`).
+- `ena_related_errors/*.err`: Error logs listing genomes that failed processing due to ENA-related issues.
 
 ## Configuration Profiles
 

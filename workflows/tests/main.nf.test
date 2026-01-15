@@ -12,7 +12,7 @@ nextflow_workflow {
                     gut_mapping         = "${projectDir}/data/known_and_found_gut_genomes.tsv"
 
                     // user input args
-                    merge_with_results  = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
+                    previous_mapping    = "${moduleDir}/tests/data/mag_to_assembly_links.tsv"
                     skip_accessions     = "${moduleDir}/tests/data/processed_accessions.tsv"
                     accessions_list     = "${moduleDir}/tests/data/input_accessions_small.tsv"
                     catalogues_metadata = "${moduleDir}/tests/data/all_catalog_metadata.tsv"
