@@ -8,11 +8,11 @@
 ## Introduction
 
 This Nextflow pipeline is designed to map Metagenome-Assembled Genome (MAG) ENA accessions to their corresponding primary metagenome assemblies.
-The pipeline retrieves metadata links through the [ENA Portal API and Browser API](https://ena-docs.readthedocs.io/en/latest/retrieval/programmatic-access.html), than verifies matches by comparing contig checksums between MAGs and assemblies.
+The pipeline retrieves metadata links through the [ENA Portal API and Browser API](https://ena-docs.readthedocs.io/en/latest/retrieval/programmatic-access.html), then verifies matches by comparing contig checksums between MAGs and assemblies.
 
 ## Pipeline Overview
 
-![MAG-to-Assembly Pipeline Diagram](assets/pipeline-diagram.png){width=700px}
+![MAG-to-Assembly Pipeline Diagram](assets/pipeline-diagram.png)
 
 ### Main workflow
 
